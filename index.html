@@ -3,545 +3,448 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Find the Ball — Shuffle the Glass</title>
+<title>Find the Bowl — RGB Shell Game</title>
 <style>
   :root{
-    --bg:#0f1724;
-    --card:#0b1220;
-    --accent:#FFD166;
-    --glass:#cfe8ff33;
-    --glass-outline:#e6f0ff55;
-    --glass-shadow: rgba(0,0,0,0.35);
-    --text:#e6eef8;
+    --bg:#071028;
+    --panel:#07141f;
     --muted:#9fb0cc;
-    --glass-width:120px;
-    --glass-height:160px;
+    --glass-w:120px;
+    --glass-h:160px;
+    --table-h:18px;
   }
-
-  html,body{
-    height:100%;
-    margin:0;
-    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
-    background: radial-gradient(1000px 400px at 10% 10%, #07203a 0%, var(--bg) 30%), var(--bg);
-    color:var(--text);
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#eaf2ff;background:
+    radial-gradient(800px 300px at 10% 10%, #07203a 0%, var(--bg) 30%), var(--bg);-webkit-font-smoothing:antialiased}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px;box-sizing:border-box}
+  .card{width:100%;max-width:920px;background:linear-gradient(180deg,#051129,#08121b);border-radius:14px;padding:22px;box-shadow:0 10px 30px rgba(3,8,16,0.7)}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  h1{font-size:20px;margin:0;display:flex;gap:12px;align-items:center}
+  p.lead{margin:0;color:var(--muted);font-size:13px}
+  .arena{margin-top:18px;border-radius:12px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);display:flex;flex-direction:column;align-items:center}
+  .table{
+    width:100%;max-width:760px;height:260px;position:relative;display:flex;align-items:flex-end;justify-content:center;
+    box-sizing:border-box;overflow:hidden;
   }
-
-  .wrap{
-    min-height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:28px;
-    box-sizing:border-box;
+  .surface{position:absolute;left:0;right:0;bottom:18px;height:var(--table-h);background:linear-gradient(180deg,#6b3b07,#3a1f03);border-radius:999px;box-shadow:0 8px 18px rgba(0,0,0,0.5)}
+  .positions{position:relative;width:640px;max-width:90%;height:220px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 8px;box-sizing:border-box}
+  .slot{position:relative;width:var(--glass-w);height:var(--glass-h);display:flex;align-items:flex-end;justify-content:center;transform-origin:center bottom;transition:transform 700ms cubic-bezier(.2,.9,.3,1);cursor:pointer;user-select:none}
+  .glass{
+    width:100%;height:84%;border-radius:12px 12px 34px 34px;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.45), inset 0 -10px 30px rgba(0,0,0,0.15);
+    border:2px solid rgba(255,255,255,0.06);overflow:visible;
   }
-
-  .card{
-    width:100%;
-    max-width:920px;
-    background: linear-gradient(180deg,#071729 0%, #07151e 55%);
-    border-radius:16px;
-    padding:28px;
-    box-shadow: 0 10px 30px rgba(3,8,16,0.7), 0 2px 6px rgba(0,0,0,0.45);
-    border:1px solid rgba(255,255,255,0.03);
+  .glass::after{content:'';position:absolute;left:12%;top:12%;width:30%;height:46%;border-radius:70%;background:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.02));filter:blur(6px);transform:rotate(-18deg);opacity:0.9;pointer-events:none}
+  /* bowl (colorful RGB) */
+  .bowl{
+    width:42px;height:42px;border-radius:50%;position:absolute;bottom:22px;box-shadow:0 8px 22px rgba(0,0,0,0.45), inset 0 -6px 12px rgba(0,0,0,0.12);
+    transition:transform 360ms ease, opacity 220ms ease;opacity:0;pointer-events:none;
   }
-
-  header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    margin-bottom:18px;
+  .bowl.show{opacity:1;transform: translateY(-8px) scale(1.03)}
+  .label{margin-top:10px;text-align:center;font-size:13px;color:var(--muted)}
+  .controls{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:14px}
+  .btn{background:linear-gradient(180deg,#1f6feb,#2c8cff);color:white;border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(44,140,255,0.12)}
+  .btn.alt{background:transparent;color:#d7e8ff;border:1px solid rgba(255,255,255,0.06)}
+  .status{margin-top:10px;text-align:center;font-size:15px;color:var(--muted);min-height:22px}
+  footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;color:var(--muted);font-size:13px}
+  /* success / fail animations */
+  .glass.correct{outline:4px solid rgba(110,255,180,0.14);box-shadow:0 14px 40px rgba(110,255,180,0.06)}
+  .glass.wrong{outline:4px solid rgba(255,110,110,0.12)}
+  @keyframes shake {
+    0% { transform: translateX(0) }
+    20% { transform: translateX(-8px) }
+    40% { transform: translateX(6px) }
+    60% { transform: translateX(-6px) }
+    80% { transform: translateX(3px) }
+    100% { transform: translateX(0) }
   }
-  h1{
-    font-size:20px;
-    margin:0;
-    display:flex;
-    gap:12px;
-    align-items:center;
-  }
-  .logo{
-    width:44px;
-    height:44px;
-    border-radius:10px;
-    background:linear-gradient(135deg,#00C2FF 0%, #3A86FF 100%);
-    display:grid;
-    place-items:center;
-    font-weight:700;
-    color:white;
-    box-shadow:0 6px 18px rgba(58,134,255,0.18);
-  }
-  p.lead{ margin:0; color:var(--muted); font-size:13px; }
-
-  /* game area */
-  .game{
-    margin-top:18px;
-    display:flex;
-    gap:24px;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-  }
-
-  .arena{
-    position:relative;
-    width:100%;
-    max-width:760px;
-    height:320px;
-    background:
-      radial-gradient(200px 80px at 50% 90%, rgba(0,0,0,0.35), transparent 30%),
-      linear-gradient(180deg, rgba(255,255,255,0.02), transparent 20%);
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-    padding:18px;
-    box-sizing:border-box;
-    border:1px solid rgba(255,255,255,0.02);
-  }
-
-  /* the 3 positions */
-  .positions{
-    position:relative;
-    width:100%;
-    max-width:600px;
-    height:230px;
-    display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
-    gap:10px;
-    padding:0 20px;
-    box-sizing:border-box;
-  }
-
-  .slot{
-    position:relative;
-    width:var(--glass-width);
-    height:var(--glass-height);
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
-    transform-origin:center bottom;
-    transition: transform 600ms cubic-bezier(.2,.9,.3,1);
-    cursor:pointer;
-    user-select:none;
-  }
-
-  /* glass styling */
-  .glass {
-    width:100%;
-    height:86%;
-    border-radius:10px 10px 40px 40px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-    box-shadow: 0 8px 20px var(--glass-shadow), inset 0 -12px 28px rgba(0,0,0,0.18);
-    border: 2px solid var(--glass-outline);
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
-    position:relative;
-    overflow:visible;
-    padding-bottom:18px;
-  }
-
-  /* little shine */
-  .glass::after{
-    content:'';
-    position:absolute;
-    left:10%;
-    top:14%;
-    width:28%;
-    height:50%;
-    border-radius:70%;
-    background:linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.02));
-    filter: blur(6px);
-    transform:rotate(-18deg);
-    opacity:0.9;
-    pointer-events:none;
-  }
-
-  /* ball */
-  .ball {
-    width:36px;
-    height:36px;
-    border-radius:50%;
-    background:linear-gradient(180deg,var(--accent), #ffb84d);
-    box-shadow:0 6px 16px rgba(255,177,77,0.25), inset 0 -6px 8px rgba(0,0,0,0.08);
-    position:absolute;
-    bottom:20px;
-    display:block;
-    transition: transform 350ms ease, opacity 300ms ease;
-    opacity:0;
-    pointer-events:none;
-  }
-
-  /* visible when revealed */
-  .ball.show { opacity:1; transform: translateY(-8px) scale(1.02); }
-
-  /* glass label */
-  .label{
-    margin-top:10px;
-    text-align:center;
-    font-size:13px;
-    color:var(--muted);
-  }
-
-  /* controls */
-  .controls{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    justify-content:center;
-    margin-top:16px;
-  }
-  .btn{
-    background:linear-gradient(180deg,#1f6feb,#2c8cff);
-    color:white;
-    border:none;
-    padding:10px 14px;
-    border-radius:10px;
-    font-weight:600;
-    cursor:pointer;
-    box-shadow:0 6px 18px rgba(44,140,255,0.12);
-  }
-  .btn.secondary{
-    background:transparent;
-    color:var(--text);
-    border:1px solid rgba(255,255,255,0.06);
-    box-shadow:none;
-  }
-
-  .status{
-    margin-top:12px;
-    text-align:center;
-    font-size:15px;
-    color:var(--muted);
-  }
-
-  /* small footprint footer */
-  footer{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    margin-top:18px;
-    color:var(--muted);
-    font-size:13px;
-  }
-
+  .shake { animation: shake 520ms cubic-bezier(.25,.8,.25,1); }
+  /* confetti */
+  .confetti { pointer-events:none; position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden; }
+  .confetti i{ position:absolute; display:block; width:9px; height:14px; opacity:0.95; transform-origin:center; border-radius:2px}
   /* responsive */
-  @media (max-width:640px){
-    :root{ --glass-width:86px; --glass-height:120px; }
-    .arena{ height:260px; }
-  }
+  @media (max-width:640px){:root{--glass-w:86px;--glass-h:120px;--table-h:16px} .positions{height:180px}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="card" role="application" aria-label="Find the ball under the glass game">
+  <div class="card" role="application" aria-label="Find the bowl under a glass game">
     <header>
       <div>
-        <h1><span class="logo">G</span> Find the Ball</h1>
-        <p class="lead">Guess which glass hides the ball after the glasses shuffle. Click a glass to reveal.</p>
+        <h1>Find the Bowl — RGB Shell Game</h1>
+        <p class="lead">Click <strong>Start</strong> to show the bowl briefly, then watch the glasses shuffle. Pick the glass you think hides the bowl.</p>
       </div>
       <div style="text-align:right">
-        <div style="font-size:12px;color:var(--muted)">Status: <strong id="gameMode">Ready</strong></div>
-        <div style="font-size:12px;color:var(--muted)">Tip: Play safely — not for medical advice 😉</div>
+        <div style="font-size:12px;color:var(--muted)">Status: <strong id="mode">Ready</strong></div>
       </div>
     </header>
 
-    <div class="game">
-      <div class="arena" id="arena" aria-live="polite">
+    <div class="arena" id="arena">
+      <div class="table" id="table">
+        <div class="surface" aria-hidden="true"></div>
+
         <div class="positions" id="positions" role="list" aria-label="Glass positions">
-          <!-- Slots will be inserted by JS for predictable ordering -->
+          <!-- slots injected by JS -->
         </div>
+
+        <!-- confetti canvas (DOM) -->
+        <div class="confetti" id="confetti" aria-hidden="true"></div>
       </div>
 
       <div class="controls" aria-hidden="false">
-        <button class="btn" id="startBtn">Start Shuffle</button>
-        <button class="btn secondary" id="revealBtn">Reveal Answer</button>
-        <button class="btn secondary" id="resetBtn">Reset</button>
+        <button class="btn" id="startBtn">Start</button>
+        <button class="btn alt" id="revealBtn">Reveal</button>
+        <button class="btn alt" id="resetBtn">Reset</button>
       </div>
 
-      <div class="status" id="statusText">Press <strong>Start Shuffle</strong> to hide the ball and begin swapping.</div>
+      <div class="status" id="statusText">Press <strong>Start</strong> to begin. The bowl will appear briefly then hide.</div>
 
       <footer>
-        <div>Made with ♥ — Single-file, use on GitHub Pages (place as <code>index.html</code>)</div>
-        <div style="opacity:0.9; font-size:13px">Randomized each round • Accessible • Mobile-friendly</div>
+        <div style="opacity:0.9">Single-file • Drop as <code>index.html</code> for GitHub Pages</div>
+        <div style="font-size:13px;color:var(--muted)">Good luck!</div>
       </footer>
     </div>
   </div>
 </div>
 
 <script>
-/*
-  Simple "shell game" logic:
-  - 3 slots (left, center, right)
-  - Pick a random slot to hide the ball.
-  - When user clicks Start Shuffle: perform randomized swaps for N seconds (disable clicks).
-  - After shuffle stops, allow user to click a glass to guess.
-  - Show result and reveal ball with animation.
+/* Enhanced shell game
+ - On Start: choose random original index (0..2), assign random RGB colors for bowl/glasses,
+   show bowl under that glass briefly (revealLength), then cover and start shuffling for shuffleDuration.
+ - After shuffle, allow user to guess by clicking a glass slot (original-index based).
+ - If correct: success animation (glow + small pop)
+ - If wrong: wrong animation (shake + confetti + reveal correct glass)
 */
-
-(function(){
+(() => {
   const positionsEl = document.getElementById('positions');
   const startBtn = document.getElementById('startBtn');
   const revealBtn = document.getElementById('revealBtn');
   const resetBtn = document.getElementById('resetBtn');
   const statusText = document.getElementById('statusText');
-  const gameModeText = document.getElementById('gameMode');
+  const modeText = document.getElementById('mode');
+  const confettiRoot = document.getElementById('confetti');
 
-  let slots = [];      // DOM elements for each slot
-  let order = [0,1,2]; // current order left->right mapping to original indices
-  let hiddenIndex = 0; // index (0..2) where ball is currently hidden (original index)
+  let slots = [];          // slot DOMs by original index (0..2)
+  let order = [0,1,2];     // visual order mapping to original indices
+  let hiddenIndex = 0;     // original index holding the bowl
   let animating = false;
-  let shuffleTimer = null;
-  let swapIntervalTimer = null;
+  let swapInterval = null;
+  let shuffleTimeout = null;
+  let revealShown = false;
 
-  // create slots
+  // settings
+  const revealLength = 1000;      // ms: show bowl briefly before shuffling
+  const shuffleDuration = 5200;   // ms total shuffle time
+  const swapEvery = 600;          // ms between swaps
+
+  // generate vivid RGB color (returns "rgb(r,g,b)")
+  function randRGB(){
+    const r = 80 + Math.floor(Math.random()*176); // 80..255
+    const g = 60 + Math.floor(Math.random()*196);
+    const b = 60 + Math.floor(Math.random()*196);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // build three slots
   function buildSlots(){
     positionsEl.innerHTML = '';
     slots = [];
     for(let i=0;i<3;i++){
-      const slot = document.createElement('div');
-      slot.className = 'slot';
-      slot.setAttribute('role','button');
-      slot.setAttribute('tabindex','0');
-      slot.setAttribute('aria-label','Glass ' + (i+1));
-      slot.dataset.index = i; // original index
-      slot.innerHTML = `
-        <div class="glass" aria-hidden="true">
-          <div class="ball" data-ball-for="${i}"></div>
+      const s = document.createElement('div');
+      s.className = 'slot';
+      s.dataset.index = i;
+      s.setAttribute('role','button');
+      s.setAttribute('tabindex','0');
+      s.setAttribute('aria-label', `Glass ${i+1}`);
+      // each glass will receive a random RGB color on round start
+      s.innerHTML = `
+        <div class="glass" data-glass="${i}">
+          <div class="bowl" data-ball-for="${i}" aria-hidden="true"></div>
         </div>
         <div class="label">Glass ${i+1}</div>
       `;
-      positionsEl.appendChild(slot);
-      slots.push(slot);
-      // click handler (guess)
-      slot.addEventListener('click', onGuess);
-      slot.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget:slot}); }
+      positionsEl.appendChild(s);
+      slots.push(s);
+
+      // click handler
+      s.addEventListener('click', onGuess);
+      s.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); }
       });
     }
-    // place them at natural order (no transforms)
     order = [0,1,2];
-    applyPositionsInstant();
+    placeSlotsInstant();
   }
 
-  // instantly place DOM slots according to order (no transition)
-  function applyPositionsInstant(){
-    // we won't actually reparent elements; we'll animate with translateX.
-    // compute target x centers for 3 slots relative to container
+  // place slots centered (using translateX offsets)
+  function placeSlotsInstant(){
     const rect = positionsEl.getBoundingClientRect();
-    const totalWidth = rect.width;
-    const gap = 20;
-    const slotW = slots[0].getBoundingClientRect().width;
-    const step = (totalWidth - slotW) / 2; // distance from left to center to right
-    const xs = [-step, 0, step]; // relative offsets
-    // center them
-    const centerX = rect.width/2;
-    slots.forEach((s, idx)=>{
-      const pos = order.indexOf(idx); // current visual position (0..2)
-      const x = xs[pos];
+    const total = rect.width;
+    const slotRect = slots[0].getBoundingClientRect();
+    // use three positions: left, center, right
+    const step = (total - slotRect.width) / 2;
+    const xs = [-step, 0, step];
+    slots.forEach((s, origIdx) => {
+      const pos = order.indexOf(origIdx);
+      const x = xs[pos] || 0;
       s.style.transition = 'none';
       s.style.transform = `translateX(${x}px)`;
-      // small lift for visual
       s.style.zIndex = 10 + pos;
-      // reset
-      const ball = s.querySelector('.ball');
-      ball.classList.remove('show');
-      ball.style.opacity = 0;
+      // reset glass states
+      const g = s.querySelector('.glass');
+      g.classList.remove('correct','wrong');
+      g.style.transform = '';
     });
-    // force reflow then re-enable transitions
+    // force reflow then restore transitions
     void positionsEl.offsetHeight;
-    slots.forEach(s => s.style.transition = 'transform 600ms cubic-bezier(.2,.9,.3,1)');
+    slots.forEach(s => s.style.transition = 'transform 700ms cubic-bezier(.2,.9,.3,1)');
   }
 
-  // animate swapping two positions by swapping their index positions in order array
+  // swap two visual positions (iPos, jPos are visual positions 0..2)
   function swapPositions(iPos, jPos){
-    // iPos and jPos are *visual* positions (0=left,1=middle,2=right)
-    // find which slot indexes currently at those positions
     const idxA = order[iPos];
     const idxB = order[jPos];
-    // swap values in order
-    const newOrder = order.slice();
-    newOrder[iPos] = idxB;
-    newOrder[jPos] = idxA;
-    order = newOrder;
-    // compute new transforms
+    order[iPos] = idxB;
+    order[jPos] = idxA;
+    // compute new positions and apply transforms
     const rect = positionsEl.getBoundingClientRect();
-    const totalWidth = rect.width;
-    const slotW = slots[0].getBoundingClientRect().width;
-    const step = (totalWidth - slotW) / 2;
+    const total = rect.width;
+    const slotRect = slots[0].getBoundingClientRect();
+    const step = (total - slotRect.width) / 2;
     const xs = [-step, 0, step];
-    slots.forEach((s, originalIdx)=>{
-      const pos = order.indexOf(originalIdx);
-      const x = xs[pos];
+    slots.forEach((s, origIdx) => {
+      const pos = order.indexOf(origIdx);
+      const x = xs[pos] || 0;
       s.style.transform = `translateX(${x}px)`;
       s.style.zIndex = 10 + pos;
     });
   }
 
-  // Randomized shuffling sequence while keeping track of where the hiddenIndex goes
-  function startShuffle(durationMs = 5000, swapEvery = 650){
-    if(animating) return;
-    animating = true;
-    gameModeText.textContent = 'Shuffling...';
-    statusText.textContent = 'Shuffling the glasses... watch carefully!';
-    // pick a random starting hiddenIndex
-    hiddenIndex = Math.floor(Math.random()*3);
-    // ensure ball is under that original slot (ball is tracked by original index)
-    // place ball under its slot visually (we'll only reveal when requested)
-    updateBallVisibility(false);
-
-    // run swaps for durationMs using setInterval
-    const endTime = Date.now() + durationMs;
-    swapIntervalTimer = setInterval(()=>{
-      // pick two distinct visual positions to swap
-      const i = Math.floor(Math.random()*3);
-      let j = Math.floor(Math.random()*3);
-      while(j===i) j = Math.floor(Math.random()*3);
-      swapPositions(i,j);
-
-      // update hiddenIndex: if hiddenIndex's original slot was moved swap it
-      // find positions: position of the hiddenIndex in `order` (visual pos)
-      // After swapping positions, hiddenIndex still references the original index — no change.
-      // BUT because order changed, we don't need to update hiddenIndex numeric value.
-      // (hiddenIndex is original slot id; tracking remains correct.)
-
-      // stop when time's up
-      if(Date.now() >= endTime){
-        clearInterval(swapIntervalTimer);
-        swapIntervalTimer = null;
-        animating = false;
-        gameModeText.textContent = 'Choose';
-        statusText.textContent = 'Pick the glass you think hides the ball.';
-      }
-    }, swapEvery);
-
-    // safety fallback to stop after duration
-    shuffleTimer = setTimeout(()=>{
-      if(swapIntervalTimer){ clearInterval(swapIntervalTimer); swapIntervalTimer = null; }
-      animating = false;
-      gameModeText.textContent = 'Choose';
-      statusText.textContent = 'Pick the glass you think hides the ball.';
-    }, durationMs + 500);
+  // show bowl under its original slot (visual position will vary)
+  function showBowlTemporarily(cb){
+    // reveal the bowl element for hiddenIndex
+    const bowl = slots[hiddenIndex].querySelector('.bowl');
+    bowl.style.background = makeBowlGradient(); // set color
+    bowl.classList.add('show');
+    bowl.style.opacity = 1;
+    revealShown = true;
+    setTimeout(()=> {
+      bowl.classList.remove('show');
+      bowl.style.opacity = 0;
+      revealShown = false;
+      cb && cb();
+    }, revealLength);
   }
 
-  // reveal ball visually under correct slot
-  function revealBall(){
-    // find which DOM slot corresponds to the original index hiddenIndex
-    // find its current visual position index in order and then find the slot element
-    const slotEl = slots[hiddenIndex];
-    // show ball within that slot (ball has data-ball-for)
-    const ball = slotEl.querySelector('.ball');
-    ball.classList.add('show');
-    ball.style.opacity = 1;
-    // small pop
-    ball.animate([
-      { transform: 'translateY(0) scale(1)', opacity: 0 },
-      { transform: 'translateY(-18px) scale(1.05)', opacity: 1 }
-    ], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1)' });
-  }
-
-  // update ball visibility (hidden or not)
-  function updateBallVisibility(show){
-    // hide/clear all balls
-    slots.forEach(s=>{
-      const b = s.querySelector('.ball');
-      b.classList.remove('show');
-      b.style.opacity = show ? 1 : 0;
-    });
-    if(show) revealBall();
-  }
-
-  // handle user guess
-  function onGuess(e){
-    if(animating) return; // ignore while shuffling
-    const clickedSlot = e.currentTarget;
-    const clickedOriginalIndex = Number(clickedSlot.dataset.index);
-    // determine if clickedOriginalIndex currently contains hiddenIndex
-    // hiddenIndex is original index of the ball. The user clicks the slot element for a particular original index.
-    const correct = (clickedOriginalIndex === hiddenIndex);
-
-    // show reveal
-    updateBallVisibility(true);
-
-    // feedback
-    if(correct){
-      gameModeText.textContent = 'Correct!';
-      statusText.innerHTML = `<strong>Correct!</strong> You found the ball under Glass ${clickedOriginalIndex+1}. <span style="color:var(--muted)">(Start again to play)</span>`;
-    }else{
-      gameModeText.textContent = 'Wrong';
-      // find where the ball is now visually: it's still at original index hiddenIndex (slot element)
-      statusText.innerHTML = `<strong>Wrong.</strong> The ball was under Glass ${hiddenIndex+1}. Try again!`;
-      // briefly highlight selected wrong choice
-      clickedSlot.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.98)' }, { transform: 'scale(1)' }], { duration: 360 });
+  // set RGB colors for glasses and bowl for this round
+  function colorizeRound(){
+    // color each glass background with a translucent rgb and a darker border
+    for(let i=0;i<3;i++){
+      const g = slots[i].querySelector('.glass');
+      const rgb = randRGB();
+      // create translucent for glass
+      g.style.background = `${rgb.replace('rgb','linear-gradient(180deg, rgba').replace(')',' ,0.06)')}, rgba(255,255,255,0.02))`;
+      // simpler fallback: set semi-transparent background using rgba
+      const rgba = rgb.replace('rgb','rgba').replace(')',',0.12)');
+      g.style.background = `linear-gradient(180deg, ${rgba}, rgba(255,255,255,0.02))`;
+      g.style.borderColor = `rgba(255,255,255,0.06)`;
+      // store color on dataset for potential use
+      g.dataset.color = rgb;
+      // style bowl color as brighter variant (we'll set on show)
+      const bowl = slots[i].querySelector('.bowl');
+      bowl.style.background = makeBowlGradient();
     }
   }
 
-  // reveal button: just show without changing state
+  // build a colorful gradient for bowl using random rgb
+  function makeBowlGradient(){
+    const a = randRGB();
+    const b = randRGB();
+    return `radial-gradient(circle at 30% 30%, ${a}, ${b})`;
+  }
+
+  // start shuffle sequence
+  function startShuffle(){
+    if(animating) return;
+    animating = true;
+    modeText.textContent = 'Preparing';
+    statusText.textContent = 'Showing bowl briefly...';
+    // shuffle order a bit initially
+    order = shuffleArray([0,1,2]);
+    placeSlotsInstant();
+
+    // choose hidden original index
+    hiddenIndex = Math.floor(Math.random() * 3);
+
+    // assign colors
+    colorizeRound();
+
+    // show bowl briefly, then begin shuffling
+    showBowlTemporarily(() => {
+      modeText.textContent = 'Shuffling';
+      statusText.textContent = 'Shuffling... watch carefully!';
+      // begin swapping at intervals
+      const endAt = Date.now() + shuffleDuration;
+      swapInterval = setInterval(() => {
+        // pick two distinct visual positions to swap
+        const i = Math.floor(Math.random()*3);
+        let j = Math.floor(Math.random()*3);
+        while(j===i) j = Math.floor(Math.random()*3);
+        swapPositions(i,j);
+        if(Date.now() >= endAt){
+          clearInterval(swapInterval);
+          swapInterval = null;
+          animating = false;
+          modeText.textContent = 'Choose';
+          statusText.textContent = 'Pick the glass you think hides the bowl.';
+        }
+      }, swapEvery);
+      // safety stop
+      shuffleTimeout = setTimeout(() => {
+        if(swapInterval){ clearInterval(swapInterval); swapInterval = null; animating = false; modeText.textContent = 'Choose'; statusText.textContent = 'Pick the glass you think hides the bowl.'; }
+      }, shuffleDuration + 300);
+    });
+  }
+
+  // user guess handler
+  function onGuess(e){
+    if(animating) return;
+    const el = e.currentTarget;
+    const clickedOriginal = Number(el.dataset.index);
+    // disable further clicks briefly
+    animating = true;
+
+    // reveal the actual bowl visually
+    const correct = (clickedOriginal === hiddenIndex);
+
+    // reveal bowl visually under true original slot after small pause
+    setTimeout(()=> {
+      // show bowl under correct original slot
+      const trueBowl = slots[hiddenIndex].querySelector('.bowl');
+      trueBowl.style.background = makeBowlGradient();
+      trueBowl.classList.add('show');
+      trueBowl.style.opacity = 1;
+    }, 220);
+
+    if(correct){
+      modeText.textContent = 'Correct!';
+      statusText.innerHTML = `<strong>Correct!</strong> You found the bowl under Glass ${hiddenIndex+1}. Well done!`;
+      // success animation: glow and pop
+      const g = slots[hiddenIndex].querySelector('.glass');
+      g.classList.add('correct');
+      // little pop
+      g.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-12px)' }, { transform: 'translateY(0)' }], { duration: 560, easing: 'cubic-bezier(.2,.9,.3,1)' });
+      // finish
+      setTimeout(()=> { animating = false; }, 900);
+    } else {
+      modeText.textContent = 'Wrong';
+      statusText.innerHTML = `<strong>Wrong.</strong> You chose Glass ${clickedOriginal+1}. The bowl was under Glass ${hiddenIndex+1}.`;
+      // wrong animation on clicked glass: shake + highlight wrong
+      const clickedGlass = el.querySelector('.glass');
+      clickedGlass.classList.add('wrong');
+      clickedGlass.classList.add('shake');
+      // reveal correct glass highlight after small delay, and produce confetti
+      setTimeout(()=> {
+        clickedGlass.classList.remove('shake');
+        const correctGlass = slots[hiddenIndex].querySelector('.glass');
+        correctGlass.classList.add('correct');
+        // confetti burst
+        spawnConfettiAt(correctGlass);
+      }, 380);
+      setTimeout(()=> { animating = false; }, 1400);
+    }
+  }
+
+  // reveal button simply shows the bowl and marks correct
   revealBtn.addEventListener('click', ()=>{
     if(animating) return;
-    updateBallVisibility(true);
-    gameModeText.textContent = 'Revealed';
-    statusText.textContent = 'Answer revealed. Press Reset or Start Shuffle to play again.';
+    // reveal bowl under hiddenIndex immediately
+    slots[hiddenIndex].querySelector('.bowl').classList.add('show');
+    slots[hiddenIndex].querySelector('.glass').classList.add('correct');
+    modeText.textContent = 'Revealed';
+    statusText.textContent = 'Answer revealed. Press Reset or Start to play again.';
   });
 
-  // reset to initial layout
+  // reset game
   resetBtn.addEventListener('click', ()=>{
-    if(animating){ clearInterval(swapIntervalTimer); swapIntervalTimer = null; animating = false; }
-    if(shuffleTimer){ clearTimeout(shuffleTimer); shuffleTimer = null; }
-    gameModeText.textContent = 'Ready';
-    statusText.textContent = 'Reset done. Press Start Shuffle to play.';
+    if(swapInterval){ clearInterval(swapInterval); swapInterval = null; }
+    if(shuffleTimeout){ clearTimeout(shuffleTimeout); shuffleTimeout = null; }
+    animating = false;
+    modeText.textContent = 'Ready';
+    statusText.textContent = 'Reset. Press Start to play.';
+    clearConfetti();
     buildSlots();
-    applyPositionsInstant();
+    placeSlotsInstant();
   });
 
-  startBtn.addEventListener('click', ()=>{
-    if(animating) return;
-    // ensure starting layout
-    applyPositionsInstant();
-    // randomize initial ordering slightly before hiding
-    // random hiddenIndex and then shuffle a bit
-    hiddenIndex = Math.floor(Math.random()*3);
-    // perform small random arrangement so glasses might not be in natural order
-    order = shuffleArray([0,1,2]);
-    applyPositionsInstant();
-    // start main shuffle
-    startShuffle(5200, 620);
-  });
+  startBtn.addEventListener('click', startShuffle);
 
-  // utility: shuffle an array
+  // utility: shuffle array
   function shuffleArray(a){
     const arr = a.slice();
-    for(let i = arr.length -1; i>0; i--){
+    for(let i=arr.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [arr[i],arr[j]] = [arr[j],arr[i]];
     }
     return arr;
   }
 
-  // initial build
-  window.addEventListener('load', ()=>{
-    buildSlots();
-    // make a tiny intro animation
-    setTimeout(()=> {
-      slots.forEach((s, idx)=>{
-        s.style.transform += ' translateY(8px)';
-        setTimeout(()=> s.style.transform = s.style.transform.replace(' translateY(8px)',''), 320 + idx*80);
-      });
-    }, 200);
-  });
+  // confetti spawn: create small colorful bars and animate falling
+  function spawnConfettiAt(targetGlass){
+    // compute position relative to confettiRoot
+    const rootRect = confettiRoot.getBoundingClientRect();
+    const tRect = targetGlass.getBoundingClientRect();
+    const centerX = (tRect.left + tRect.right)/2 - rootRect.left;
+    // create 20 pieces
+    const pieces = 20;
+    const colors = ['#ff4d6d','#ffd166','#06d6a0','#4cc9f0','#ff7eb6','#c77dff'];
+    for(let i=0;i<pieces;i++){
+      const el = document.createElement('i');
+      const w = 6 + Math.random()*8;
+      const h = 10 + Math.random()*16;
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      el.style.left = (centerX + (Math.random()*120 - 60)) + 'px';
+      el.style.top = (tRect.top - rootRect.top) + 'px';
+      el.style.background = colors[Math.floor(Math.random()*colors.length)];
+      el.style.transform = `rotate(${Math.random()*360}deg)`;
+      confettiRoot.appendChild(el);
 
-  // handle resizing: recompute transforms so positions remain centered
+      // animate using requestAnimationFrame + CSS transitions
+      const destX = (Math.random()*300 - 150);
+      const destY = rootRect.height + 80 + Math.random()*180;
+      const rot = Math.random()*720 - 360;
+      el.animate([
+        { transform: `translateY(0px) rotate(${Math.random()*360}deg)`, opacity:1 },
+        { transform: `translate(${destX}px, ${destY}px) rotate(${rot}deg)`, opacity:0.1 }
+      ], { duration: 1200 + Math.random()*700, easing: 'cubic-bezier(.2,.8,.2,1)' });
+
+      // remove after animation
+      setTimeout(()=> { if(el && el.parentNode) el.parentNode.removeChild(el); }, 2200);
+    }
+  }
+
+  function clearConfetti(){
+    confettiRoot.innerHTML = '';
+  }
+
+  // handle window resize: recompute positions
   let resizeTimer = null;
-  window.addEventListener('resize', ()=>{
+  window.addEventListener('resize', () => {
     if(resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(()=> { applyPositionsInstant(); }, 180);
+    resizeTimer = setTimeout(()=> { placeSlotsInstant(); }, 160);
   });
 
+  // initial bootstrap
+  window.addEventListener('load', () => {
+    buildSlots();
+    // tiny entrance
+    setTimeout(()=> {
+      slots.forEach((s, i) => {
+        s.style.transform += ' translateY(8px)';
+        setTimeout(()=> { s.style.transform = s.style.transform.replace(' translateY(8px)',''); }, 220 + i*90);
+      });
+    }, 160);
+  });
 })();
 </script>
 </body>
