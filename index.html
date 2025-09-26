@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Find the Bowl — Responsive Shell Game (No Overlap)</title>
+<title>Find the Bowl — Table-bounded Shell Game</title>
 <style>
   :root{
     --bg:#071028;
     --muted:#9fb0cc;
-    /* responsive glass width: min 70px, ideal 18vw, max 120px */
-    --glass-w: clamp(70px, 18vw, 120px);
-    --glass-h: calc(var(--glass-w) * 1.35); /* keep aspect ratio */
-    --table-h:18px;
-    --slot-gap: clamp(8px, 3vw, 14px); /* gap adjusts with viewport */
+    /* responsive glass width: min 64px, ideal 16vw, max 110px */
+    --glass-w: clamp(64px, 16vw, 110px);
+    --glass-h: calc(var(--glass-w) * 1.35);
+    --table-h:20px;
+    --slot-gap: clamp(8px, 3vw, 14px);
+    --table-padding: 16px;
     --max-arena-width:760px;
   }
 
@@ -36,34 +37,27 @@
 
   /* Game area */
   .arena{margin-top:14px;border-radius:12px;padding:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);display:flex;flex-direction:column;align-items:center}
-  .table{width:100%;max-width:var(--max-arena-width);height:auto;position:relative;display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box;overflow:visible;padding:18px 6px}
-  .surface{position:absolute;left:6%;right:6%;bottom:18px;height:var(--table-h);background:linear-gradient(180deg,#6b3b07,#3a1f03);border-radius:999px;box-shadow:0 8px 18px rgba(0,0,0,0.5);pointer-events:none}
+  /* table: fixed horizontal area where slots move; overflow hidden to keep them inside */
+  .table{width:100%;max-width:var(--max-arena-width);height:calc(var(--glass-h) + 110px);position:relative;display:block;box-sizing:border-box;overflow:hidden;padding:calc(var(--table-padding)); background:
+    linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border-radius:10px;}
+  .surface{position:absolute;left:6%;right:6%;bottom:12px;height:var(--table-h);background:linear-gradient(180deg,#6b3b07,#3a1f03);border-radius:999px;box-shadow:0 8px 18px rgba(0,0,0,0.5);pointer-events:none;z-index:2}
 
-  /* flex layout ensures no overlap */
-  .positions{
-    width:min(640px,92%);
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;       /* center them */
-    gap:var(--slot-gap);          /* responsive gap */
-    padding:6px;
-    box-sizing:border-box;
-    height: calc(var(--glass-h) + 60px);
-  }
+  .positions{ position:relative; width:100%; height:100%; } /* container for absolute slots */
 
   .slot{
+    position:absolute;  /* we'll set left/top in JS so slots remain inside table */
     width:var(--glass-w);
     height:var(--glass-h);
     display:flex;
     align-items:flex-end;
     justify-content:center;
-    position:relative;
     cursor:pointer;
     user-select:none;
     touch-action:manipulation;
-    transition: transform 420ms cubic-bezier(.2,.9,.3,1);
+    transition: left 580ms cubic-bezier(.2,.9,.3,1), transform 360ms ease;
+    z-index:10;
   }
-  .slot .hit{ position:absolute; left:-8px; right:-8px; top:0; bottom:0; display:block; } /* larger hit area */
+  .slot .hit{ position:absolute; left:-8px; right:-8px; top:0; bottom:0; display:block; } /* larger touch area */
 
   .glass{
     width:100%;
@@ -72,11 +66,12 @@
     display:flex;
     align-items:flex-end;
     justify-content:center;
-    padding-bottom:16px;
-    box-shadow:0 10px 20px rgba(0,0,0,0.45), inset 0 -10px 30px rgba(0,0,0,0.15);
+    padding-bottom:14px;
+    box-shadow:0 10px 18px rgba(0,0,0,0.38), inset 0 -8px 22px rgba(0,0,0,0.12);
     border:2px solid rgba(255,255,255,0.06);
-    transition: box-shadow .28s ease, outline .28s ease, transform .28s ease;
+    transition: box-shadow .28s ease, outline .28s ease, transform .22s ease;
     overflow:visible;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   }
   .glass::after{ content:''; position:absolute; left:12%; top:12%; width:30%; height:46%; border-radius:70%; background:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.02)); filter:blur(6px); transform:rotate(-18deg); opacity:0.9; pointer-events:none; }
 
@@ -85,13 +80,14 @@
     height: calc(var(--glass-w) * 0.36);
     border-radius:50%;
     position:absolute;
-    bottom:22px;
-    box-shadow:0 8px 22px rgba(0,0,0,0.45), inset 0 -6px 12px rgba(0,0,0,0.12);
-    transition: transform 360ms ease, opacity 220ms ease;
+    bottom:18px;  /* sits on the table */
+    box-shadow:0 8px 20px rgba(0,0,0,0.45), inset 0 -6px 10px rgba(0,0,0,0.10);
+    transition: transform 300ms ease, opacity 200ms ease;
     opacity:0;
+    z-index:12;
     pointer-events:none;
   }
-  .bowl.show{ opacity:1; transform: translateY(-8px) scale(1.03); }
+  .bowl.show{ opacity:1; transform: translateY(-6px) scale(1.02); }
 
   .label{ margin-top:10px; text-align:center; font-size:13px; color:var(--muted); }
   .controls{ display:flex; gap:10px; align-items:center; justify-content:center; margin-top:12px; flex-wrap:wrap; }
@@ -100,15 +96,16 @@
   .status{ margin-top:10px; text-align:center; font-size:15px; color:var(--muted); min-height:24px; line-height:1.2 }
   footer{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-top:12px; color:var(--muted); font-size:13px }
 
-  /* Animations + effects */
   .glass.correct{ outline:5px solid rgba(110,255,180,0.13); box-shadow:0 24px 60px rgba(110,255,180,0.06) }
   .glass.wrong{ outline:4px solid rgba(255,110,110,0.12) }
+
   @keyframes shake { 0%{ transform:translateX(0) } 20%{ transform:translateX(-8px) } 40%{ transform:translateX(6px) } 60%{ transform:translateX(-6px) } 80%{ transform:translateX(3px) } 100%{ transform:translateX(0) } }
   .shake{ animation:shake 520ms cubic-bezier(.25,.8,.25,1); }
+
   .confetti{ pointer-events:none; position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; z-index:60; }
   .confetti i{ position:absolute; display:block; width:9px; height:14px; opacity:0.95; transform-origin:center; border-radius:2px; }
 
-  /* responsive adjustments */
+  /* responsive */
   @media (max-width:640px){
     :root{ --slot-gap: clamp(6px, 5vw, 10px); }
     h1{ font-size:18px; }
@@ -116,8 +113,6 @@
     .controls{ flex-direction:column; align-items:stretch; }
     .status{ font-size:14px; }
   }
-
-  /* focus styles */
   .slot:focus-visible{ outline:3px solid rgba(80,160,255,0.14); outline-offset:6px; border-radius:10px; }
   button:focus-visible{ box-shadow:0 8px 26px rgba(44,140,255,0.18); }
 </style>
@@ -127,8 +122,8 @@
   <div class="card" role="application" aria-label="Find the bowl under a glass game">
     <header>
       <div>
-        <h1>Find the Bowl — Responsive</h1>
-        <p class="lead">Tap <strong>Start</strong> to show the bowl briefly, then watch the glasses shuffle. Glasses resize to fit your screen — they won't overlap.</p>
+        <h1>Find the Bowl — Bounded to Table</h1>
+        <p class="lead">Glasses move only on the table area and will not go outside. Tap <strong>Start</strong> (resets first) to play.</p>
       </div>
       <div style="text-align:right">
         <div style="font-size:12px;color:var(--muted)">Status: <strong id="mode">Ready</strong></div>
@@ -136,11 +131,11 @@
     </header>
 
     <div class="arena" id="arena">
-      <div class="table" id="table">
+      <div class="table" id="table" aria-live="polite">
         <div class="surface" aria-hidden="true"></div>
 
         <div class="positions" id="positions" role="list" aria-label="Glass positions">
-          <!-- slots injected by JS -->
+          <!-- JS will create absolute-positioned .slot children here -->
         </div>
 
         <div class="confetti" id="confetti" aria-hidden="true"></div>
@@ -156,18 +151,22 @@
 
       <footer>
         <div style="opacity:0.9">Single-file • Drop as <code>index.html</code> for GitHub Pages</div>
-        <div style="font-size:13px;color:var(--muted)">Glasses always fit the screen — no overlap</div>
+        <div style="font-size:13px;color:var(--muted)">Glasses remain on the table and won't overflow</div>
       </footer>
     </div>
   </div>
 </div>
 
 <script>
-/* Responsive shell game — uses flex layout so items never overlap.
-   Start button resets then starts immediately.
+/* Table-bounded shell game
+ - Slots are absolutely positioned within the table.
+ - Left positions are computed so slots stay fully inside the table.
+ - Swaps animate by changing left values (no overflow).
+ - Start resets first and then starts.
 */
 
 (() => {
+  const table = document.getElementById('table');
   const positionsEl = document.getElementById('positions');
   const startBtn = document.getElementById('startBtn');
   const revealBtn = document.getElementById('revealBtn');
@@ -176,15 +175,18 @@
   const modeText = document.getElementById('mode');
   const confettiRoot = document.getElementById('confetti');
 
-  let slots = [];
-  let hiddenIndex = 0;
+  let slots = [];              // array of slot DOMs (original index order)
+  let posLefts = [0,0,0];      // computed left pixel positions for the three visual positions
+  let order = [0,1,2];         // mapping: visualPos -> originalIndex
+  let hiddenIndex = 0;         // original index where bowl is hidden
   let animating = false;
   let swapInterval = null;
   let shuffleTimeout = null;
 
-  const revealLength = 1000;
-  const shuffleDuration = 5200;
-  const swapEvery = 600;
+  const revealLength = 1000;      // ms to show bowl before shuffle
+  const shuffleDuration = 5200;   // total ms for shuffling
+  const swapEvery = 600;          // ms between swaps
+  const tablePadding = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--table-padding')) || 16;
 
   function randRGB(){
     const r = 80 + Math.floor(Math.random()*176);
@@ -194,13 +196,14 @@
   }
   function makeBowlGradient(){ const a = randRGB(); const b = randRGB(); return `radial-gradient(circle at 30% 30%, ${a}, ${b})`; }
 
+  // create three slots (original indices 0..2)
   function buildSlots(){
     positionsEl.innerHTML = '';
     slots = [];
     for(let i=0;i<3;i++){
       const s = document.createElement('div');
       s.className = 'slot';
-      s.dataset.index = i;
+      s.dataset.index = i; // original index
       s.setAttribute('role','button');
       s.setAttribute('tabindex','0');
       s.setAttribute('aria-label', `Glass ${i+1}`);
@@ -211,38 +214,111 @@
         </div>
         <div class="label">Glass ${i+1}</div>
       `;
-      positionsEl.appendChild(s);
-      slots.push(s);
-
+      // add event listeners
       s.addEventListener('click', onGuess, {passive:true});
       s.addEventListener('touchstart', (e)=> { e.preventDefault(); onGuess({currentTarget: s}); }, {passive:false});
-      s.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); } });
+      s.addEventListener('keydown', (e)=> { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); }});
+      positionsEl.appendChild(s);
+      slots.push(s);
     }
-    // no transforms required — flex layout handles positions
+    // initial mapping visualPos -> original index
+    order = [0,1,2];
+    // compute lefts and position them
+    computeLeftPositions();
+    applyLeftsInstant();
   }
 
-  function colorizeRound(){
-    for(let i=0;i<3;i++){
-      const g = slots[i].querySelector('.glass');
-      const rgb = randRGB();
-      const rgba = rgb.replace('rgb','rgba').replace(')',',0.12)');
-      g.style.background = `linear-gradient(180deg, ${rgba}, rgba(255,255,255,0.02))`;
-      g.style.borderColor = `rgba(255,255,255,0.06)`;
-      const bowl = slots[i].querySelector('.bowl');
-      bowl.style.background = makeBowlGradient();
+  // compute left pixel positions (three slots) so they remain inside table
+  function computeLeftPositions(){
+    const containerRect = positionsEl.getBoundingClientRect();
+    let containerWidth = containerRect.width;
+    if(containerWidth === 0){
+      // fallback: measure table inner width minus padding
+      const tableRect = table.getBoundingClientRect();
+      containerWidth = Math.max(300, tableRect.width - tablePadding*2);
     }
+    // get current slot width (computed from CSS)
+    const slotW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glass-w')) || slots[0]?.getBoundingClientRect().width || 100;
+    // ensure slotW is numeric pixels if clamp() returned percent; try reading actual DOM if available
+    if(slots[0]){
+      const rect = slots[0].getBoundingClientRect();
+      if(rect.width) { /* prefer actual width */ }
+    }
+    // compute actual slot pixel width by reading one slot's bounding box after it is in DOM
+    let actualSlotW = slotW;
+    if(slots[0]){
+      const r = slots[0].getBoundingClientRect();
+      if(r.width && r.width > 10) actualSlotW = r.width;
+    }
+    // spacing available between slots (two gaps)
+    // aim for a minimum gap and distribute remaining space
+    const minGap = Math.max(8, (containerWidth * 0.02)); // at least 8px
+    // available space for gaps = containerWidth - 3*slotW
+    let totalGapSpace = containerWidth - (3 * actualSlotW);
+    if(totalGapSpace < 2 * minGap){
+      // if not enough, shrink slot width proportionally so they fit (user said small is ok)
+      const targetSlotW = (containerWidth - 2 * minGap) / 3;
+      actualSlotW = Math.max(40, targetSlotW);
+      totalGapSpace = containerWidth - (3 * actualSlotW);
+    }
+    const gap = Math.max(minGap, totalGapSpace / 2);
+    // left positions relative to positionsEl left
+    const left0 = Math.max(8, (containerWidth - (3 * actualSlotW + 2*gap)) / 2);
+    posLefts[0] = left0;
+    posLefts[1] = left0 + actualSlotW + gap;
+    posLefts[2] = left0 + 2*(actualSlotW + gap);
+    // set slot widths explicitly to avoid surprises
+    slots.forEach(s => { s.style.width = actualSlotW + 'px'; s.style.height = (actualSlotW * 1.35) + 'px'; });
   }
 
-  function resetGame(){
-    if(swapInterval){ clearInterval(swapInterval); swapInterval = null; }
-    if(shuffleTimeout){ clearTimeout(shuffleTimeout); shuffleTimeout = null; }
-    animating = false;
-    modeText.textContent = 'Ready';
-    statusText.textContent = 'Reset. Press Start to play.';
-    clearConfetti();
-    buildSlots();
+  // place according to posLefts and current order instantly (no animation)
+  function applyLeftsInstant(){
+    slots.forEach((slot, origIdx) => {
+      const visualPos = order.indexOf(origIdx);
+      const left = posLefts[visualPos] || 0;
+      slot.style.transition = 'none';
+      slot.style.left = left + 'px';
+      // place top so bottom aligns above table surface: compute from container height
+      const containerH = positionsEl.getBoundingClientRect().height;
+      const slotH = slot.getBoundingClientRect().height || (parseFloat(getComputedStyle(slot).height) || 120);
+      const top = Math.max(16, containerH - slotH - 28); // keep some top spacing
+      slot.style.top = top + 'px';
+      // reset visual states
+      const g = slot.querySelector('.glass');
+      g.classList.remove('correct','wrong');
+      const b = slot.querySelector('.bowl');
+      if(b){ b.classList.remove('show'); b.style.opacity = 0; }
+      slot.style.zIndex = 10;
+    });
+    // force reflow then restore transitions
+    void positionsEl.offsetHeight;
+    slots.forEach(s => s.style.transition = 'left 580ms cubic-bezier(.2,.9,.3,1), transform 300ms ease');
   }
 
+  // animate lefts according to order
+  function animateToLefts(){
+    slots.forEach((slot, origIdx) => {
+      const visualPos = order.indexOf(origIdx);
+      const left = posLefts[visualPos] || 0;
+      slot.style.left = left + 'px';
+      slot.style.zIndex = 20 + visualPos;
+    });
+  }
+
+  // swap two visual positions (iPos,jPos) by swapping values in order[]
+  function swapPositions(iPos, jPos){
+    // swap the values stored at positions iPos and jPos
+    const idxA = order[iPos];
+    const idxB = order[jPos];
+    for(let k=0;k<order.length;k++){
+      if(order[k] === idxA) order[k] = idxB;
+      else if(order[k] === idxB) order[k] = idxA;
+    }
+    // animate slots to new lefts
+    animateToLefts();
+  }
+
+  // show bowl under original index temporarily
   function showBowlTemporarily(cb){
     const bowl = slots[hiddenIndex].querySelector('.bowl');
     bowl.style.background = makeBowlGradient();
@@ -255,38 +331,44 @@
     }, revealLength);
   }
 
+  // random RGB color for glass backgrounds and bowl
+  function colorizeRound(){
+    for(let i=0;i<3;i++){
+      const g = slots[i].querySelector('.glass');
+      const rgb = randRGB();
+      const rgba = rgb.replace('rgb','rgba').replace(')',',0.12)');
+      g.style.background = `linear-gradient(180deg, ${rgba}, rgba(255,255,255,0.02))`;
+      g.style.borderColor = `rgba(255,255,255,0.06)`;
+      const bowl = slots[i].querySelector('.bowl');
+      bowl.style.background = makeBowlGradient();
+    }
+  }
+
+  // start shuffle: reset first, then show bowl then swaps
   function startShuffle(){
     if(animating) return;
     animating = true;
     modeText.textContent = 'Preparing';
-    statusText.textContent = 'Showing bowl briefly...';
+    statusText.textContent = 'Resetting & showing bowl briefly...';
+
+    // reset order to natural before starting
+    order = [0,1,2];
+    computeLeftPositions();
+    applyLeftsInstant();
 
     hiddenIndex = Math.floor(Math.random() * 3);
     colorizeRound();
 
+    // show bowl then shuffle
     showBowlTemporarily(() => {
       modeText.textContent = 'Shuffling';
       statusText.textContent = 'Shuffling... watch carefully!';
       const endAt = Date.now() + shuffleDuration;
-      // perform random visual 'swaps' by animating scale & order (we use flex order)
-      // We'll randomly swap the DOM order to create visible movement while preserving non-overlap.
       swapInterval = setInterval(() => {
-        // pick two distinct indices and swap their order numbers
         const i = Math.floor(Math.random()*3);
         let j = Math.floor(Math.random()*3);
         while(j===i) j = Math.floor(Math.random()*3);
-        // swap DOM positions to create movement without overlap
-        const a = slots[i];
-        const b = slots[j];
-        // swap in the DOM: replace one with the other
-        const pa = a.parentNode;
-        const na = a.nextSibling === b ? a : a.nextSibling;
-        pa.insertBefore(a, b);
-        pa.insertBefore(b, na);
-        // also update slots array to reflect new DOM order
-        const newSlots = Array.from(positionsEl.querySelectorAll('.slot'));
-        slots = newSlots;
-        // stop when time's up
+        swapPositions(i,j);
         if(Date.now() >= endAt){
           clearInterval(swapInterval);
           swapInterval = null;
@@ -295,47 +377,47 @@
           statusText.textContent = 'Tap the glass you think hides the bowl.';
         }
       }, swapEvery);
+
       shuffleTimeout = setTimeout(()=> {
         if(swapInterval){ clearInterval(swapInterval); swapInterval = null; animating = false; modeText.textContent = 'Choose'; statusText.textContent = 'Tap the glass you think hides the bowl.'; }
       }, shuffleDuration + 300);
     });
   }
 
+  // user guess
   function onGuess(e){
-    const targetSlot = e.currentTarget;
-    if(!targetSlot) return;
+    const slot = e.currentTarget;
+    if(!slot) return;
     if(animating) return;
     animating = true;
-    // determine original index of clicked slot - because we swapped DOM order, dataset.index still represents original index
-    const clickedOriginal = Number(targetSlot.dataset.index);
+    const clickedOriginal = Number(slot.dataset.index);
     const correct = (clickedOriginal === hiddenIndex);
 
     // reveal true bowl after short delay
     setTimeout(()=> {
-      // find the slot element whose dataset.index === hiddenIndex (may be anywhere in DOM)
-      const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+      const trueSlot = slots.find(s => Number(s.dataset.index) === hiddenIndex);
       if(trueSlot){
         const trueBowl = trueSlot.querySelector('.bowl');
         trueBowl.style.background = makeBowlGradient();
         trueBowl.classList.add('show');
         trueBowl.style.opacity = 1;
       }
-    }, 180);
+    }, 160);
 
     if(correct){
       modeText.textContent = 'Correct!';
       statusText.innerHTML = `<strong>Correct!</strong> You found the bowl under Glass ${hiddenIndex+1}. Nice!`;
-      const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
-      if(trueSlot){ const g = trueSlot.querySelector('.glass'); g.classList.add('correct'); g.animate([{ transform:'translateY(0)' },{ transform:'translateY(-12px)' },{ transform:'translateY(0)' }], { duration:560, easing:'cubic-bezier(.2,.9,.3,1)' }); }
+      const trueSlot = slots.find(s => Number(s.dataset.index) === hiddenIndex);
+      if(trueSlot){ trueSlot.querySelector('.glass')?.classList.add('correct'); trueSlot.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-12px)' }, { transform: 'translateY(0)' }], { duration: 560, easing: 'cubic-bezier(.2,.9,.3,1)' }); }
       setTimeout(()=> { animating = false; }, 900);
     } else {
       modeText.textContent = 'Wrong';
       statusText.innerHTML = `<strong>Wrong.</strong> You tapped Glass ${clickedOriginal+1}. The bowl was under Glass ${hiddenIndex+1}.`;
-      targetSlot.querySelector('.glass')?.classList.add('wrong');
-      targetSlot.classList.add('shake');
+      slot.querySelector('.glass')?.classList.add('wrong');
+      slot.classList.add('shake');
       setTimeout(()=> {
-        targetSlot.classList.remove('shake');
-        const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+        slot.classList.remove('shake');
+        const trueSlot = slots.find(s => Number(s.dataset.index) === hiddenIndex);
         if(trueSlot){
           trueSlot.querySelector('.glass')?.classList.add('correct');
           spawnConfettiAt(trueSlot.querySelector('.glass'));
@@ -345,16 +427,18 @@
     }
   }
 
-  // Start: reset first, then start
-  startBtn.addEventListener('click', () => {
+  // reveal and reset handlers
+  startBtn.addEventListener('click', ()=> {
+    // reset first then start (resetGame will also clear running timers)
     resetGame();
-    requestAnimationFrame(() => { startShuffle(); });
+    // ensure layout computed then start
+    requestAnimationFrame(()=> { startShuffle(); });
   }, {passive:true});
   startBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); startBtn.click(); }, {passive:false});
 
-  revealBtn.addEventListener('click', () => {
+  revealBtn.addEventListener('click', ()=> {
     if(animating) return;
-    const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+    const trueSlot = slots.find(s => Number(s.dataset.index) === hiddenIndex);
     if(trueSlot){ trueSlot.querySelector('.bowl')?.classList.add('show'); trueSlot.querySelector('.glass')?.classList.add('correct'); }
     modeText.textContent = 'Revealed';
     statusText.textContent = 'Answer revealed. Press Reset or Start to play again.';
@@ -364,6 +448,18 @@
   resetBtn.addEventListener('click', resetGame, {passive:true});
   resetBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); resetBtn.click(); }, {passive:false});
 
+  function resetGame(){
+    if(swapInterval){ clearInterval(swapInterval); swapInterval = null; }
+    if(shuffleTimeout){ clearTimeout(shuffleTimeout); shuffleTimeout = null; }
+    animating = false;
+    modeText.textContent = 'Ready';
+    statusText.textContent = 'Reset. Press Start to play.';
+    clearConfetti();
+    // re-build to recalc sizes & positions
+    buildSlots();
+  }
+
+  // confetti
   function spawnConfettiAt(targetGlass){
     const rootRect = confettiRoot.getBoundingClientRect();
     const tRect = targetGlass.getBoundingClientRect();
@@ -393,26 +489,24 @@
   }
   function clearConfetti(){ confettiRoot.innerHTML = ''; }
 
-  // handle resize: rebuild to ensure bowl sizing etc.
+  // recompute positions on resize (throttled)
   let resizeTimer = null;
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', ()=> {
     if(resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(()=> {
-      // rebuild slots to ensure sizes & order remain valid
-      const oldHidden = hiddenIndex;
-      const wasAnimating = animating;
-      resetGame();
-      // conserve previous hiddenIndex if not animating
-      hiddenIndex = (typeof oldHidden === 'number') ? oldHidden : 0;
-      if(wasAnimating){ /* do nothing, user will start again */ }
-    }, 180);
+      // recompute left positions and re-apply current order
+      computeLeftPositions();
+      applyLeftsInstant();
+    }, 140);
   });
 
-  // initial load
-  window.addEventListener('load', () => {
+  // initial boot
+  window.addEventListener('load', ()=> {
     buildSlots();
-    // small entrance
-    setTimeout(()=> { Array.from(positionsEl.children).forEach((s,i)=>{ s.style.transform = 'translateY(8px)'; setTimeout(()=> s.style.transform = '', 160 + i*80); }); }, 120);
+    // small entrance animation
+    setTimeout(()=> {
+      slots.forEach((s,i)=>{ s.style.transform = 'translateY(8px)'; setTimeout(()=> s.style.transform = '', 160 + i*80); });
+    }, 120);
   });
 })();
 </script>
