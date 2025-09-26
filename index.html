@@ -3,81 +3,121 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Find the Bowl — Compact RGB Shell Game</title>
+<title>Find the Bowl — Responsive Shell Game (No Overlap)</title>
 <style>
   :root{
     --bg:#071028;
     --muted:#9fb0cc;
-    --glass-w:120px;
-    --glass-h:160px;
+    /* responsive glass width: min 70px, ideal 18vw, max 120px */
+    --glass-w: clamp(70px, 18vw, 120px);
+    --glass-h: calc(var(--glass-w) * 1.35); /* keep aspect ratio */
     --table-h:18px;
-    --slot-gap:12px;   /* small gap so glasses are near each other */
+    --slot-gap: clamp(8px, 3vw, 14px); /* gap adjusts with viewport */
     --max-arena-width:760px;
   }
 
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#eaf2ff;
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+    color:#eaf2ff;
     background: radial-gradient(800px 300px at 10% 10%, #07203a 0%, var(--bg) 30%), var(--bg);
-    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
-  .card{width:100%;max-width:980px;background:linear-gradient(180deg,#051129,#08121b);border-radius:14px;padding:18px;box-shadow:0 10px 30px rgba(3,8,16,0.7)}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+  .card{width:100%;max-width:980px;background:linear-gradient(180deg,#051129,#08121b);border-radius:14px;padding:16px;box-shadow:0 10px 30px rgba(3,8,16,0.7)}
   header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
   h1{font-size:20px;margin:0;display:flex;gap:12px;align-items:center}
   p.lead{margin:0;color:var(--muted);font-size:13px;line-height:1.25}
 
   /* Game area */
   .arena{margin-top:14px;border-radius:12px;padding:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);display:flex;flex-direction:column;align-items:center}
-  .table{width:100%;max-width:var(--max-arena-width);height:280px;position:relative;display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box;overflow:visible}
-  .surface{position:absolute;left:6%;right:6%;bottom:18px;height:var(--table-h);background:linear-gradient(180deg,#6b3b07,#3a1f03);border-radius:999px;box-shadow:0 8px 18px rgba(0,0,0,0.5)}
+  .table{width:100%;max-width:var(--max-arena-width);height:auto;position:relative;display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box;overflow:visible;padding:18px 6px}
+  .surface{position:absolute;left:6%;right:6%;bottom:18px;height:var(--table-h);background:linear-gradient(180deg,#6b3b07,#3a1f03);border-radius:999px;box-shadow:0 8px 18px rgba(0,0,0,0.5);pointer-events:none}
 
-  /* CENTERED & CLOSE: use center alignment and a small gap */
-  .positions{position:relative;width:min(640px,92%);height:220px;display:flex;align-items:flex-end;justify-content:center;gap:var(--slot-gap);padding:0 4px;box-sizing:border-box}
-  .slot{position:relative;width:var(--glass-w);height:var(--glass-h);display:flex;align-items:flex-end;justify-content:center;transform-origin:center bottom;transition:transform 700ms cubic-bezier(.2,.9,.3,1);cursor:pointer;user-select:none;touch-action:manipulation}
-  .slot .hit{ position:absolute; left:-10px; right:-10px; top:0; bottom:0; display:block; } /* larger hit area */
+  /* flex layout ensures no overlap */
+  .positions{
+    width:min(640px,92%);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;       /* center them */
+    gap:var(--slot-gap);          /* responsive gap */
+    padding:6px;
+    box-sizing:border-box;
+    height: calc(var(--glass-h) + 60px);
+  }
 
-  .glass{width:100%;height:84%;border-radius:12px 12px 34px 34px;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px;box-shadow: 0 10px 20px rgba(0,0,0,0.45), inset 0 -10px 30px rgba(0,0,0,0.15);border:2px solid rgba(255,255,255,0.06);overflow:visible; transition: box-shadow .28s ease, outline .28s ease;}
-  .glass::after{content:'';position:absolute;left:12%;top:12%;width:30%;height:46%;border-radius:70%;background:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.02));filter:blur(6px);transform:rotate(-18deg);opacity:0.9;pointer-events:none}
+  .slot{
+    width:var(--glass-w);
+    height:var(--glass-h);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    position:relative;
+    cursor:pointer;
+    user-select:none;
+    touch-action:manipulation;
+    transition: transform 420ms cubic-bezier(.2,.9,.3,1);
+  }
+  .slot .hit{ position:absolute; left:-8px; right:-8px; top:0; bottom:0; display:block; } /* larger hit area */
 
-  .bowl{width:44px;height:44px;border-radius:50%;position:absolute;bottom:22px;box-shadow:0 8px 22px rgba(0,0,0,0.45), inset 0 -6px 12px rgba(0,0,0,0.12);transition:transform 360ms ease, opacity 220ms ease;opacity:0;pointer-events:none}
-  .bowl.show{opacity:1;transform: translateY(-8px) scale(1.03)}
-  .label{margin-top:10px;text-align:center;font-size:13px;color:var(--muted)}
-  .controls{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px;flex-wrap:wrap}
-  .btn{background:linear-gradient(180deg,#1f6feb,#2c8cff);color:white;border:none;padding:12px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(44,140,255,0.12);min-width:110px}
-  .btn.alt{background:transparent;color:#d7e8ff;border:1px solid rgba(255,255,255,0.06)}
-  .status{margin-top:10px;text-align:center;font-size:15px;color:var(--muted);min-height:24px;line-height:1.2}
-  footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;color:var(--muted);font-size:13px}
+  .glass{
+    width:100%;
+    height:84%;
+    border-radius:12px 12px 34px 34px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding-bottom:16px;
+    box-shadow:0 10px 20px rgba(0,0,0,0.45), inset 0 -10px 30px rgba(0,0,0,0.15);
+    border:2px solid rgba(255,255,255,0.06);
+    transition: box-shadow .28s ease, outline .28s ease, transform .28s ease;
+    overflow:visible;
+  }
+  .glass::after{ content:''; position:absolute; left:12%; top:12%; width:30%; height:46%; border-radius:70%; background:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.02)); filter:blur(6px); transform:rotate(-18deg); opacity:0.9; pointer-events:none; }
+
+  .bowl{
+    width: calc(var(--glass-w) * 0.36);
+    height: calc(var(--glass-w) * 0.36);
+    border-radius:50%;
+    position:absolute;
+    bottom:22px;
+    box-shadow:0 8px 22px rgba(0,0,0,0.45), inset 0 -6px 12px rgba(0,0,0,0.12);
+    transition: transform 360ms ease, opacity 220ms ease;
+    opacity:0;
+    pointer-events:none;
+  }
+  .bowl.show{ opacity:1; transform: translateY(-8px) scale(1.03); }
+
+  .label{ margin-top:10px; text-align:center; font-size:13px; color:var(--muted); }
+  .controls{ display:flex; gap:10px; align-items:center; justify-content:center; margin-top:12px; flex-wrap:wrap; }
+  .btn{ background:linear-gradient(180deg,#1f6feb,#2c8cff); color:white; border:none; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(44,140,255,0.12); min-width:110px }
+  .btn.alt{ background:transparent; color:#d7e8ff; border:1px solid rgba(255,255,255,0.06) }
+  .status{ margin-top:10px; text-align:center; font-size:15px; color:var(--muted); min-height:24px; line-height:1.2 }
+  footer{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-top:12px; color:var(--muted); font-size:13px }
 
   /* Animations + effects */
-  .glass.correct{outline:5px solid rgba(110,255,180,0.13);box-shadow:0 24px 60px rgba(110,255,180,0.06)}
-  .glass.wrong{outline:4px solid rgba(255,110,110,0.12)}
-  @keyframes shake {
-    0% { transform: translateX(0) }
-    20% { transform: translateX(-8px) }
-    40% { transform: translateX(6px) }
-    60% { transform: translateX(-6px) }
-    80% { transform: translateX(3px) }
-    100% { transform: translateX(0) }
-  }
-  .shake { animation: shake 520ms cubic-bezier(.25,.8,.25,1); }
-  .confetti { pointer-events:none; position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden;z-index:60 }
-  .confetti i{ position:absolute; display:block; width:9px; height:14px; opacity:0.95; transform-origin:center; border-radius:2px}
+  .glass.correct{ outline:5px solid rgba(110,255,180,0.13); box-shadow:0 24px 60px rgba(110,255,180,0.06) }
+  .glass.wrong{ outline:4px solid rgba(255,110,110,0.12) }
+  @keyframes shake { 0%{ transform:translateX(0) } 20%{ transform:translateX(-8px) } 40%{ transform:translateX(6px) } 60%{ transform:translateX(-6px) } 80%{ transform:translateX(3px) } 100%{ transform:translateX(0) } }
+  .shake{ animation:shake 520ms cubic-bezier(.25,.8,.25,1); }
+  .confetti{ pointer-events:none; position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; z-index:60; }
+  .confetti i{ position:absolute; display:block; width:9px; height:14px; opacity:0.95; transform-origin:center; border-radius:2px; }
 
-  /* responsive: stack controls on tiny screens & adjust sizes */
+  /* responsive adjustments */
   @media (max-width:640px){
-    :root{ --glass-w:92px; --glass-h:132px; --table-h:16px; --slot-gap:10px; }
-    h1{font-size:18px}
-    .btn{padding:12px 14px; min-width:unset; width:100%;}
-    .controls{flex-direction:column; align-items:stretch;}
-    .status{font-size:14px}
-    .positions{height:180px}
-  }
-  @media (max-width:420px){
-    :root{ --glass-w:78px; --glass-h:120px; --slot-gap:8px; }
+    :root{ --slot-gap: clamp(6px, 5vw, 10px); }
+    h1{ font-size:18px; }
+    .btn{ padding:12px 14px; min-width:unset; width:100%; }
+    .controls{ flex-direction:column; align-items:stretch; }
+    .status{ font-size:14px; }
   }
 
-  /* focus styles for keyboard users (accessible) */
+  /* focus styles */
   .slot:focus-visible{ outline:3px solid rgba(80,160,255,0.14); outline-offset:6px; border-radius:10px; }
   button:focus-visible{ box-shadow:0 8px 26px rgba(44,140,255,0.18); }
 </style>
@@ -87,8 +127,8 @@
   <div class="card" role="application" aria-label="Find the bowl under a glass game">
     <header>
       <div>
-        <h1>Find the Bowl — Compact RGB Shell Game</h1>
-        <p class="lead">Tap <strong>Start</strong> to show the bowl briefly, then watch the glasses shuffle. Tap the glass you think hides the bowl.</p>
+        <h1>Find the Bowl — Responsive</h1>
+        <p class="lead">Tap <strong>Start</strong> to show the bowl briefly, then watch the glasses shuffle. Glasses resize to fit your screen — they won't overlap.</p>
       </div>
       <div style="text-align:right">
         <div style="font-size:12px;color:var(--muted)">Status: <strong id="mode">Ready</strong></div>
@@ -116,14 +156,17 @@
 
       <footer>
         <div style="opacity:0.9">Single-file • Drop as <code>index.html</code> for GitHub Pages</div>
-        <div style="font-size:13px;color:var(--muted)">Glasses are close together for easier tracking</div>
+        <div style="font-size:13px;color:var(--muted)">Glasses always fit the screen — no overlap</div>
       </footer>
     </div>
   </div>
 </div>
 
 <script>
-/* Compact shell game — glasses near each other and Start resets then starts */
+/* Responsive shell game — uses flex layout so items never overlap.
+   Start button resets then starts immediately.
+*/
+
 (() => {
   const positionsEl = document.getElementById('positions');
   const startBtn = document.getElementById('startBtn');
@@ -134,7 +177,6 @@
   const confettiRoot = document.getElementById('confetti');
 
   let slots = [];
-  let order = [0,1,2];
   let hiddenIndex = 0;
   let animating = false;
   let swapInterval = null;
@@ -171,70 +213,12 @@
       `;
       positionsEl.appendChild(s);
       slots.push(s);
+
       s.addEventListener('click', onGuess, {passive:true});
-      s.addEventListener('touchstart', onGuess, {passive:true});
-      s.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); }});
+      s.addEventListener('touchstart', (e)=> { e.preventDefault(); onGuess({currentTarget: s}); }, {passive:false});
+      s.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); } });
     }
-    order = [0,1,2];
-    placeSlotsInstant();
-  }
-
-  function getSlotGapPx(){
-    const gap = getComputedStyle(document.documentElement).getPropertyValue('--slot-gap') || '12px';
-    return parseFloat(gap);
-  }
-
-  // place slots centered and close to each other (offset uses slot width + gap)
-  function placeSlotsInstant(){
-    const rect = positionsEl.getBoundingClientRect();
-    const total = rect.width;
-    const slotRect = slots[0].getBoundingClientRect();
-    const slotW = slotRect.width || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glass-w')) || 120;
-    const gap = getSlotGapPx() || 12;
-    const offset = slotW + gap; // distance between centers
-    const xs = [-offset, 0, offset];
-    slots.forEach((s, origIdx) => {
-      const pos = order.indexOf(origIdx);
-      const x = xs[pos] || 0;
-      s.style.transition = 'none';
-      s.style.transform = `translateX(${x}px)`;
-      s.style.zIndex = 10 + pos;
-      const g = s.querySelector('.glass'); g.classList.remove('correct','wrong');
-      const b = s.querySelector('.bowl'); if(b){ b.classList.remove('show'); b.style.opacity = 0; }
-    });
-    void positionsEl.offsetHeight;
-    slots.forEach(s => s.style.transition = 'transform 700ms cubic-bezier(.2,.9,.3,1)');
-  }
-
-  function swapPositions(iPos, jPos){
-    const idxA = order[iPos];
-    const idxB = order[jPos];
-    order[iPos] = idxB;
-    order[jPos] = idxA;
-    const rect = positionsEl.getBoundingClientRect();
-    const slotRect = slots[0].getBoundingClientRect();
-    const slotW = slotRect.width || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glass-w')) || 120;
-    const gap = getSlotGapPx() || 12;
-    const offset = slotW + gap;
-    const xs = [-offset, 0, offset];
-    slots.forEach((s, origIdx) => {
-      const pos = order.indexOf(origIdx);
-      const x = xs[pos] || 0;
-      s.style.transform = `translateX(${x}px)`;
-      s.style.zIndex = 10 + pos;
-    });
-  }
-
-  function showBowlTemporarily(cb){
-    const bowl = slots[hiddenIndex].querySelector('.bowl');
-    bowl.style.background = makeBowlGradient();
-    bowl.classList.add('show');
-    bowl.style.opacity = 1;
-    setTimeout(()=> {
-      bowl.classList.remove('show');
-      bowl.style.opacity = 0;
-      cb && cb();
-    }, revealLength);
+    // no transforms required — flex layout handles positions
   }
 
   function colorizeRound(){
@@ -249,7 +233,6 @@
     }
   }
 
-  // RESET function (called before starting)
   function resetGame(){
     if(swapInterval){ clearInterval(swapInterval); swapInterval = null; }
     if(shuffleTimeout){ clearTimeout(shuffleTimeout); shuffleTimeout = null; }
@@ -258,7 +241,18 @@
     statusText.textContent = 'Reset. Press Start to play.';
     clearConfetti();
     buildSlots();
-    placeSlotsInstant();
+  }
+
+  function showBowlTemporarily(cb){
+    const bowl = slots[hiddenIndex].querySelector('.bowl');
+    bowl.style.background = makeBowlGradient();
+    bowl.classList.add('show');
+    bowl.style.opacity = 1;
+    setTimeout(()=> {
+      bowl.classList.remove('show');
+      bowl.style.opacity = 0;
+      cb && cb();
+    }, revealLength);
   }
 
   function startShuffle(){
@@ -266,19 +260,33 @@
     animating = true;
     modeText.textContent = 'Preparing';
     statusText.textContent = 'Showing bowl briefly...';
-    order = shuffleArray([0,1,2]); // small visual variation
-    placeSlotsInstant();
+
     hiddenIndex = Math.floor(Math.random() * 3);
     colorizeRound();
+
     showBowlTemporarily(() => {
       modeText.textContent = 'Shuffling';
       statusText.textContent = 'Shuffling... watch carefully!';
       const endAt = Date.now() + shuffleDuration;
+      // perform random visual 'swaps' by animating scale & order (we use flex order)
+      // We'll randomly swap the DOM order to create visible movement while preserving non-overlap.
       swapInterval = setInterval(() => {
+        // pick two distinct indices and swap their order numbers
         const i = Math.floor(Math.random()*3);
         let j = Math.floor(Math.random()*3);
         while(j===i) j = Math.floor(Math.random()*3);
-        swapPositions(i,j);
+        // swap DOM positions to create movement without overlap
+        const a = slots[i];
+        const b = slots[j];
+        // swap in the DOM: replace one with the other
+        const pa = a.parentNode;
+        const na = a.nextSibling === b ? a : a.nextSibling;
+        pa.insertBefore(a, b);
+        pa.insertBefore(b, na);
+        // also update slots array to reflect new DOM order
+        const newSlots = Array.from(positionsEl.querySelectorAll('.slot'));
+        slots = newSlots;
+        // stop when time's up
         if(Date.now() >= endAt){
           clearInterval(swapInterval);
           swapInterval = null;
@@ -287,7 +295,6 @@
           statusText.textContent = 'Tap the glass you think hides the bowl.';
         }
       }, swapEvery);
-
       shuffleTimeout = setTimeout(()=> {
         if(swapInterval){ clearInterval(swapInterval); swapInterval = null; animating = false; modeText.textContent = 'Choose'; statusText.textContent = 'Tap the glass you think hides the bowl.'; }
       }, shuffleDuration + 300);
@@ -299,52 +306,56 @@
     if(!targetSlot) return;
     if(animating) return;
     animating = true;
+    // determine original index of clicked slot - because we swapped DOM order, dataset.index still represents original index
     const clickedOriginal = Number(targetSlot.dataset.index);
     const correct = (clickedOriginal === hiddenIndex);
 
+    // reveal true bowl after short delay
     setTimeout(()=> {
-      const trueBowl = slots[hiddenIndex].querySelector('.bowl');
-      trueBowl.style.background = makeBowlGradient();
-      trueBowl.classList.add('show');
-      trueBowl.style.opacity = 1;
+      // find the slot element whose dataset.index === hiddenIndex (may be anywhere in DOM)
+      const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+      if(trueSlot){
+        const trueBowl = trueSlot.querySelector('.bowl');
+        trueBowl.style.background = makeBowlGradient();
+        trueBowl.classList.add('show');
+        trueBowl.style.opacity = 1;
+      }
     }, 180);
 
     if(correct){
       modeText.textContent = 'Correct!';
       statusText.innerHTML = `<strong>Correct!</strong> You found the bowl under Glass ${hiddenIndex+1}. Nice!`;
-      const g = slots[hiddenIndex].querySelector('.glass');
-      g.classList.add('correct');
-      g.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-12px)' }, { transform: 'translateY(0)' }], { duration: 560, easing: 'cubic-bezier(.2,.9,.3,1)' });
+      const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+      if(trueSlot){ const g = trueSlot.querySelector('.glass'); g.classList.add('correct'); g.animate([{ transform:'translateY(0)' },{ transform:'translateY(-12px)' },{ transform:'translateY(0)' }], { duration:560, easing:'cubic-bezier(.2,.9,.3,1)' }); }
       setTimeout(()=> { animating = false; }, 900);
     } else {
       modeText.textContent = 'Wrong';
       statusText.innerHTML = `<strong>Wrong.</strong> You tapped Glass ${clickedOriginal+1}. The bowl was under Glass ${hiddenIndex+1}.`;
-      const clickedGlass = targetSlot.querySelector('.glass');
-      clickedGlass.classList.add('wrong');
-      clickedGlass.classList.add('shake');
+      targetSlot.querySelector('.glass')?.classList.add('wrong');
+      targetSlot.classList.add('shake');
       setTimeout(()=> {
-        clickedGlass.classList.remove('shake');
-        const correctGlass = slots[hiddenIndex].querySelector('.glass');
-        correctGlass.classList.add('correct');
-        spawnConfettiAt(correctGlass);
+        targetSlot.classList.remove('shake');
+        const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+        if(trueSlot){
+          trueSlot.querySelector('.glass')?.classList.add('correct');
+          spawnConfettiAt(trueSlot.querySelector('.glass'));
+        }
       }, 360);
       setTimeout(()=> { animating = false; }, 1400);
     }
   }
 
-  // Start button: reset first, then begin (immediate)
+  // Start: reset first, then start
   startBtn.addEventListener('click', () => {
-    // reset first
     resetGame();
-    // ensure layout updates then start
     requestAnimationFrame(() => { startShuffle(); });
   }, {passive:true});
-  startBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startBtn.click(); }, {passive:false});
+  startBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); startBtn.click(); }, {passive:false});
 
-  revealBtn.addEventListener('click', ()=> {
+  revealBtn.addEventListener('click', () => {
     if(animating) return;
-    slots[hiddenIndex].querySelector('.bowl').classList.add('show');
-    slots[hiddenIndex].querySelector('.glass').classList.add('correct');
+    const trueSlot = Array.from(positionsEl.querySelectorAll('.slot')).find(s => Number(s.dataset.index) === hiddenIndex);
+    if(trueSlot){ trueSlot.querySelector('.bowl')?.classList.add('show'); trueSlot.querySelector('.glass')?.classList.add('correct'); }
     modeText.textContent = 'Revealed';
     statusText.textContent = 'Answer revealed. Press Reset or Start to play again.';
   }, {passive:true});
@@ -352,8 +363,6 @@
 
   resetBtn.addEventListener('click', resetGame, {passive:true});
   resetBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); resetBtn.click(); }, {passive:false});
-
-  function shuffleArray(a){ const arr = a.slice(); for(let i=arr.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; }
 
   function spawnConfettiAt(targetGlass){
     const rootRect = confettiRoot.getBoundingClientRect();
@@ -384,11 +393,27 @@
   }
   function clearConfetti(){ confettiRoot.innerHTML = ''; }
 
-  // responsive layout recompute
+  // handle resize: rebuild to ensure bowl sizing etc.
   let resizeTimer = null;
-  window.addEventListener('resize', ()=> { if(resizeTimer) clearTimeout(resizeTimer); resizeTimer = setTimeout(()=> { placeSlotsInstant(); }, 160); });
+  window.addEventListener('resize', () => {
+    if(resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=> {
+      // rebuild slots to ensure sizes & order remain valid
+      const oldHidden = hiddenIndex;
+      const wasAnimating = animating;
+      resetGame();
+      // conserve previous hiddenIndex if not animating
+      hiddenIndex = (typeof oldHidden === 'number') ? oldHidden : 0;
+      if(wasAnimating){ /* do nothing, user will start again */ }
+    }, 180);
+  });
 
-  window.addEventListener('load', ()=> { buildSlots(); setTimeout(()=> { slots.forEach((s,i)=>{ s.style.transform += ' translateY(8px)'; setTimeout(()=> s.style.transform = s.style.transform.replace(' translateY(8px)',''), 160 + i*80); }); }, 160); });
+  // initial load
+  window.addEventListener('load', () => {
+    buildSlots();
+    // small entrance
+    setTimeout(()=> { Array.from(positionsEl.children).forEach((s,i)=>{ s.style.transform = 'translateY(8px)'; setTimeout(()=> s.style.transform = '', 160 + i*80); }); }, 120);
+  });
 })();
 </script>
 </body>
