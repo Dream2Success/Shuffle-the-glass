@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Find the Ball — Shuffle the Glass</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --accent:#FFD166;
+    --glass:#cfe8ff33;
+    --glass-outline:#e6f0ff55;
+    --glass-shadow: rgba(0,0,0,0.35);
+    --text:#e6eef8;
+    --muted:#9fb0cc;
+    --glass-width:120px;
+    --glass-height:160px;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    background: radial-gradient(1000px 400px at 10% 10%, #07203a 0%, var(--bg) 30%), var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  .wrap{
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px;
+    box-sizing:border-box;
+  }
+
+  .card{
+    width:100%;
+    max-width:920px;
+    background: linear-gradient(180deg,#071729 0%, #07151e 55%);
+    border-radius:16px;
+    padding:28px;
+    box-shadow: 0 10px 30px rgba(3,8,16,0.7), 0 2px 6px rgba(0,0,0,0.45);
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  h1{
+    font-size:20px;
+    margin:0;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .logo{
+    width:44px;
+    height:44px;
+    border-radius:10px;
+    background:linear-gradient(135deg,#00C2FF 0%, #3A86FF 100%);
+    display:grid;
+    place-items:center;
+    font-weight:700;
+    color:white;
+    box-shadow:0 6px 18px rgba(58,134,255,0.18);
+  }
+  p.lead{ margin:0; color:var(--muted); font-size:13px; }
+
+  /* game area */
+  .game{
+    margin-top:18px;
+    display:flex;
+    gap:24px;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+  }
+
+  .arena{
+    position:relative;
+    width:100%;
+    max-width:760px;
+    height:320px;
+    background:
+      radial-gradient(200px 80px at 50% 90%, rgba(0,0,0,0.35), transparent 30%),
+      linear-gradient(180deg, rgba(255,255,255,0.02), transparent 20%);
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    padding:18px;
+    box-sizing:border-box;
+    border:1px solid rgba(255,255,255,0.02);
+  }
+
+  /* the 3 positions */
+  .positions{
+    position:relative;
+    width:100%;
+    max-width:600px;
+    height:230px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:10px;
+    padding:0 20px;
+    box-sizing:border-box;
+  }
+
+  .slot{
+    position:relative;
+    width:var(--glass-width);
+    height:var(--glass-height);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    transform-origin:center bottom;
+    transition: transform 600ms cubic-bezier(.2,.9,.3,1);
+    cursor:pointer;
+    user-select:none;
+  }
+
+  /* glass styling */
+  .glass {
+    width:100%;
+    height:86%;
+    border-radius:10px 10px 40px 40px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    box-shadow: 0 8px 20px var(--glass-shadow), inset 0 -12px 28px rgba(0,0,0,0.18);
+    border: 2px solid var(--glass-outline);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    position:relative;
+    overflow:visible;
+    padding-bottom:18px;
+  }
+
+  /* little shine */
+  .glass::after{
+    content:'';
+    position:absolute;
+    left:10%;
+    top:14%;
+    width:28%;
+    height:50%;
+    border-radius:70%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.02));
+    filter: blur(6px);
+    transform:rotate(-18deg);
+    opacity:0.9;
+    pointer-events:none;
+  }
+
+  /* ball */
+  .ball {
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:linear-gradient(180deg,var(--accent), #ffb84d);
+    box-shadow:0 6px 16px rgba(255,177,77,0.25), inset 0 -6px 8px rgba(0,0,0,0.08);
+    position:absolute;
+    bottom:20px;
+    display:block;
+    transition: transform 350ms ease, opacity 300ms ease;
+    opacity:0;
+    pointer-events:none;
+  }
+
+  /* visible when revealed */
+  .ball.show { opacity:1; transform: translateY(-8px) scale(1.02); }
+
+  /* glass label */
+  .label{
+    margin-top:10px;
+    text-align:center;
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  /* controls */
+  .controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:center;
+    margin-top:16px;
+  }
+  .btn{
+    background:linear-gradient(180deg,#1f6feb,#2c8cff);
+    color:white;
+    border:none;
+    padding:10px 14px;
+    border-radius:10px;
+    font-weight:600;
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(44,140,255,0.12);
+  }
+  .btn.secondary{
+    background:transparent;
+    color:var(--text);
+    border:1px solid rgba(255,255,255,0.06);
+    box-shadow:none;
+  }
+
+  .status{
+    margin-top:12px;
+    text-align:center;
+    font-size:15px;
+    color:var(--muted);
+  }
+
+  /* small footprint footer */
+  footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-top:18px;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  /* responsive */
+  @media (max-width:640px){
+    :root{ --glass-width:86px; --glass-height:120px; }
+    .arena{ height:260px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" role="application" aria-label="Find the ball under the glass game">
+    <header>
+      <div>
+        <h1><span class="logo">G</span> Find the Ball</h1>
+        <p class="lead">Guess which glass hides the ball after the glasses shuffle. Click a glass to reveal.</p>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:var(--muted)">Status: <strong id="gameMode">Ready</strong></div>
+        <div style="font-size:12px;color:var(--muted)">Tip: Play safely — not for medical advice 😉</div>
+      </div>
+    </header>
+
+    <div class="game">
+      <div class="arena" id="arena" aria-live="polite">
+        <div class="positions" id="positions" role="list" aria-label="Glass positions">
+          <!-- Slots will be inserted by JS for predictable ordering -->
+        </div>
+      </div>
+
+      <div class="controls" aria-hidden="false">
+        <button class="btn" id="startBtn">Start Shuffle</button>
+        <button class="btn secondary" id="revealBtn">Reveal Answer</button>
+        <button class="btn secondary" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="status" id="statusText">Press <strong>Start Shuffle</strong> to hide the ball and begin swapping.</div>
+
+      <footer>
+        <div>Made with ♥ — Single-file, use on GitHub Pages (place as <code>index.html</code>)</div>
+        <div style="opacity:0.9; font-size:13px">Randomized each round • Accessible • Mobile-friendly</div>
+      </footer>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  Simple "shell game" logic:
+  - 3 slots (left, center, right)
+  - Pick a random slot to hide the ball.
+  - When user clicks Start Shuffle: perform randomized swaps for N seconds (disable clicks).
+  - After shuffle stops, allow user to click a glass to guess.
+  - Show result and reveal ball with animation.
+*/
+
+(function(){
+  const positionsEl = document.getElementById('positions');
+  const startBtn = document.getElementById('startBtn');
+  const revealBtn = document.getElementById('revealBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusText = document.getElementById('statusText');
+  const gameModeText = document.getElementById('gameMode');
+
+  let slots = [];      // DOM elements for each slot
+  let order = [0,1,2]; // current order left->right mapping to original indices
+  let hiddenIndex = 0; // index (0..2) where ball is currently hidden (original index)
+  let animating = false;
+  let shuffleTimer = null;
+  let swapIntervalTimer = null;
+
+  // create slots
+  function buildSlots(){
+    positionsEl.innerHTML = '';
+    slots = [];
+    for(let i=0;i<3;i++){
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.setAttribute('role','button');
+      slot.setAttribute('tabindex','0');
+      slot.setAttribute('aria-label','Glass ' + (i+1));
+      slot.dataset.index = i; // original index
+      slot.innerHTML = `
+        <div class="glass" aria-hidden="true">
+          <div class="ball" data-ball-for="${i}"></div>
+        </div>
+        <div class="label">Glass ${i+1}</div>
+      `;
+      positionsEl.appendChild(slot);
+      slots.push(slot);
+      // click handler (guess)
+      slot.addEventListener('click', onGuess);
+      slot.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget:slot}); }
+      });
+    }
+    // place them at natural order (no transforms)
+    order = [0,1,2];
+    applyPositionsInstant();
+  }
+
+  // instantly place DOM slots according to order (no transition)
+  function applyPositionsInstant(){
+    // we won't actually reparent elements; we'll animate with translateX.
+    // compute target x centers for 3 slots relative to container
+    const rect = positionsEl.getBoundingClientRect();
+    const totalWidth = rect.width;
+    const gap = 20;
+    const slotW = slots[0].getBoundingClientRect().width;
+    const step = (totalWidth - slotW) / 2; // distance from left to center to right
+    const xs = [-step, 0, step]; // relative offsets
+    // center them
+    const centerX = rect.width/2;
+    slots.forEach((s, idx)=>{
+      const pos = order.indexOf(idx); // current visual position (0..2)
+      const x = xs[pos];
+      s.style.transition = 'none';
+      s.style.transform = `translateX(${x}px)`;
+      // small lift for visual
+      s.style.zIndex = 10 + pos;
+      // reset
+      const ball = s.querySelector('.ball');
+      ball.classList.remove('show');
+      ball.style.opacity = 0;
+    });
+    // force reflow then re-enable transitions
+    void positionsEl.offsetHeight;
+    slots.forEach(s => s.style.transition = 'transform 600ms cubic-bezier(.2,.9,.3,1)');
+  }
+
+  // animate swapping two positions by swapping their index positions in order array
+  function swapPositions(iPos, jPos){
+    // iPos and jPos are *visual* positions (0=left,1=middle,2=right)
+    // find which slot indexes currently at those positions
+    const idxA = order[iPos];
+    const idxB = order[jPos];
+    // swap values in order
+    const newOrder = order.slice();
+    newOrder[iPos] = idxB;
+    newOrder[jPos] = idxA;
+    order = newOrder;
+    // compute new transforms
+    const rect = positionsEl.getBoundingClientRect();
+    const totalWidth = rect.width;
+    const slotW = slots[0].getBoundingClientRect().width;
+    const step = (totalWidth - slotW) / 2;
+    const xs = [-step, 0, step];
+    slots.forEach((s, originalIdx)=>{
+      const pos = order.indexOf(originalIdx);
+      const x = xs[pos];
+      s.style.transform = `translateX(${x}px)`;
+      s.style.zIndex = 10 + pos;
+    });
+  }
+
+  // Randomized shuffling sequence while keeping track of where the hiddenIndex goes
+  function startShuffle(durationMs = 5000, swapEvery = 650){
+    if(animating) return;
+    animating = true;
+    gameModeText.textContent = 'Shuffling...';
+    statusText.textContent = 'Shuffling the glasses... watch carefully!';
+    // pick a random starting hiddenIndex
+    hiddenIndex = Math.floor(Math.random()*3);
+    // ensure ball is under that original slot (ball is tracked by original index)
+    // place ball under its slot visually (we'll only reveal when requested)
+    updateBallVisibility(false);
+
+    // run swaps for durationMs using setInterval
+    const endTime = Date.now() + durationMs;
+    swapIntervalTimer = setInterval(()=>{
+      // pick two distinct visual positions to swap
+      const i = Math.floor(Math.random()*3);
+      let j = Math.floor(Math.random()*3);
+      while(j===i) j = Math.floor(Math.random()*3);
+      swapPositions(i,j);
+
+      // update hiddenIndex: if hiddenIndex's original slot was moved swap it
+      // find positions: position of the hiddenIndex in `order` (visual pos)
+      // After swapping positions, hiddenIndex still references the original index — no change.
+      // BUT because order changed, we don't need to update hiddenIndex numeric value.
+      // (hiddenIndex is original slot id; tracking remains correct.)
+
+      // stop when time's up
+      if(Date.now() >= endTime){
+        clearInterval(swapIntervalTimer);
+        swapIntervalTimer = null;
+        animating = false;
+        gameModeText.textContent = 'Choose';
+        statusText.textContent = 'Pick the glass you think hides the ball.';
+      }
+    }, swapEvery);
+
+    // safety fallback to stop after duration
+    shuffleTimer = setTimeout(()=>{
+      if(swapIntervalTimer){ clearInterval(swapIntervalTimer); swapIntervalTimer = null; }
+      animating = false;
+      gameModeText.textContent = 'Choose';
+      statusText.textContent = 'Pick the glass you think hides the ball.';
+    }, durationMs + 500);
+  }
+
+  // reveal ball visually under correct slot
+  function revealBall(){
+    // find which DOM slot corresponds to the original index hiddenIndex
+    // find its current visual position index in order and then find the slot element
+    const slotEl = slots[hiddenIndex];
+    // show ball within that slot (ball has data-ball-for)
+    const ball = slotEl.querySelector('.ball');
+    ball.classList.add('show');
+    ball.style.opacity = 1;
+    // small pop
+    ball.animate([
+      { transform: 'translateY(0) scale(1)', opacity: 0 },
+      { transform: 'translateY(-18px) scale(1.05)', opacity: 1 }
+    ], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1)' });
+  }
+
+  // update ball visibility (hidden or not)
+  function updateBallVisibility(show){
+    // hide/clear all balls
+    slots.forEach(s=>{
+      const b = s.querySelector('.ball');
+      b.classList.remove('show');
+      b.style.opacity = show ? 1 : 0;
+    });
+    if(show) revealBall();
+  }
+
+  // handle user guess
+  function onGuess(e){
+    if(animating) return; // ignore while shuffling
+    const clickedSlot = e.currentTarget;
+    const clickedOriginalIndex = Number(clickedSlot.dataset.index);
+    // determine if clickedOriginalIndex currently contains hiddenIndex
+    // hiddenIndex is original index of the ball. The user clicks the slot element for a particular original index.
+    const correct = (clickedOriginalIndex === hiddenIndex);
+
+    // show reveal
+    updateBallVisibility(true);
+
+    // feedback
+    if(correct){
+      gameModeText.textContent = 'Correct!';
+      statusText.innerHTML = `<strong>Correct!</strong> You found the ball under Glass ${clickedOriginalIndex+1}. <span style="color:var(--muted)">(Start again to play)</span>`;
+    }else{
+      gameModeText.textContent = 'Wrong';
+      // find where the ball is now visually: it's still at original index hiddenIndex (slot element)
+      statusText.innerHTML = `<strong>Wrong.</strong> The ball was under Glass ${hiddenIndex+1}. Try again!`;
+      // briefly highlight selected wrong choice
+      clickedSlot.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.98)' }, { transform: 'scale(1)' }], { duration: 360 });
+    }
+  }
+
+  // reveal button: just show without changing state
+  revealBtn.addEventListener('click', ()=>{
+    if(animating) return;
+    updateBallVisibility(true);
+    gameModeText.textContent = 'Revealed';
+    statusText.textContent = 'Answer revealed. Press Reset or Start Shuffle to play again.';
+  });
+
+  // reset to initial layout
+  resetBtn.addEventListener('click', ()=>{
+    if(animating){ clearInterval(swapIntervalTimer); swapIntervalTimer = null; animating = false; }
+    if(shuffleTimer){ clearTimeout(shuffleTimer); shuffleTimer = null; }
+    gameModeText.textContent = 'Ready';
+    statusText.textContent = 'Reset done. Press Start Shuffle to play.';
+    buildSlots();
+    applyPositionsInstant();
+  });
+
+  startBtn.addEventListener('click', ()=>{
+    if(animating) return;
+    // ensure starting layout
+    applyPositionsInstant();
+    // randomize initial ordering slightly before hiding
+    // random hiddenIndex and then shuffle a bit
+    hiddenIndex = Math.floor(Math.random()*3);
+    // perform small random arrangement so glasses might not be in natural order
+    order = shuffleArray([0,1,2]);
+    applyPositionsInstant();
+    // start main shuffle
+    startShuffle(5200, 620);
+  });
+
+  // utility: shuffle an array
+  function shuffleArray(a){
+    const arr = a.slice();
+    for(let i = arr.length -1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  // initial build
+  window.addEventListener('load', ()=>{
+    buildSlots();
+    // make a tiny intro animation
+    setTimeout(()=> {
+      slots.forEach((s, idx)=>{
+        s.style.transform += ' translateY(8px)';
+        setTimeout(()=> s.style.transform = s.style.transform.replace(' translateY(8px)',''), 320 + idx*80);
+      });
+    }, 200);
+  });
+
+  // handle resizing: recompute transforms so positions remain centered
+  let resizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    if(resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=> { applyPositionsInstant(); }, 180);
+  });
+
+})();
+</script>
+</body>
+</html>
