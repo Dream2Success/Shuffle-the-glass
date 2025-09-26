@@ -3,20 +3,18 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Find the Bowl — Mobile-Friendly RGB Shell Game</title>
+<title>Find the Bowl — Compact RGB Shell Game</title>
 <style>
   :root{
     --bg:#071028;
-    --panel:#07141f;
     --muted:#9fb0cc;
     --glass-w:120px;
     --glass-h:160px;
     --table-h:18px;
-    --accent:#FFD166;
+    --slot-gap:12px;   /* small gap so glasses are near each other */
     --max-arena-width:760px;
   }
 
-  /* Basic page */
   html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#eaf2ff;
     background: radial-gradient(800px 300px at 10% 10%, #07203a 0%, var(--bg) 30%), var(--bg);
     -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
@@ -34,10 +32,10 @@
   .table{width:100%;max-width:var(--max-arena-width);height:280px;position:relative;display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box;overflow:visible}
   .surface{position:absolute;left:6%;right:6%;bottom:18px;height:var(--table-h);background:linear-gradient(180deg,#6b3b07,#3a1f03);border-radius:999px;box-shadow:0 8px 18px rgba(0,0,0,0.5)}
 
-  .positions{position:relative;width:min(640px,92%);height:220px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 4px;box-sizing:border-box}
+  /* CENTERED & CLOSE: use center alignment and a small gap */
+  .positions{position:relative;width:min(640px,92%);height:220px;display:flex;align-items:flex-end;justify-content:center;gap:var(--slot-gap);padding:0 4px;box-sizing:border-box}
   .slot{position:relative;width:var(--glass-w);height:var(--glass-h);display:flex;align-items:flex-end;justify-content:center;transform-origin:center bottom;transition:transform 700ms cubic-bezier(.2,.9,.3,1);cursor:pointer;user-select:none;touch-action:manipulation}
-  /* increase hit area for mobile: make slot padding clickable */
-  .slot .hit{ position:absolute; left:-12px; right:-12px; top:0; bottom:0; display:block; }
+  .slot .hit{ position:absolute; left:-10px; right:-10px; top:0; bottom:0; display:block; } /* larger hit area */
 
   .glass{width:100%;height:84%;border-radius:12px 12px 34px 34px;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px;box-shadow: 0 10px 20px rgba(0,0,0,0.45), inset 0 -10px 30px rgba(0,0,0,0.15);border:2px solid rgba(255,255,255,0.06);overflow:visible; transition: box-shadow .28s ease, outline .28s ease;}
   .glass::after{content:'';position:absolute;left:12%;top:12%;width:30%;height:46%;border-radius:70%;background:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.02));filter:blur(6px);transform:rotate(-18deg);opacity:0.9;pointer-events:none}
@@ -68,7 +66,7 @@
 
   /* responsive: stack controls on tiny screens & adjust sizes */
   @media (max-width:640px){
-    :root{ --glass-w:92px; --glass-h:132px; --table-h:16px;}
+    :root{ --glass-w:92px; --glass-h:132px; --table-h:16px; --slot-gap:10px; }
     h1{font-size:18px}
     .btn{padding:12px 14px; min-width:unset; width:100%;}
     .controls{flex-direction:column; align-items:stretch;}
@@ -76,7 +74,7 @@
     .positions{height:180px}
   }
   @media (max-width:420px){
-    :root{ --glass-w:78px; --glass-h:120px; }
+    :root{ --glass-w:78px; --glass-h:120px; --slot-gap:8px; }
   }
 
   /* focus styles for keyboard users (accessible) */
@@ -89,7 +87,7 @@
   <div class="card" role="application" aria-label="Find the bowl under a glass game">
     <header>
       <div>
-        <h1>Find the Bowl — Mobile Friendly</h1>
+        <h1>Find the Bowl — Compact RGB Shell Game</h1>
         <p class="lead">Tap <strong>Start</strong> to show the bowl briefly, then watch the glasses shuffle. Tap the glass you think hides the bowl.</p>
       </div>
       <div style="text-align:right">
@@ -118,17 +116,14 @@
 
       <footer>
         <div style="opacity:0.9">Single-file • Drop as <code>index.html</code> for GitHub Pages</div>
-        <div style="font-size:13px;color:var(--muted)">Mobile & desktop supported</div>
+        <div style="font-size:13px;color:var(--muted)">Glasses are close together for easier tracking</div>
       </footer>
     </div>
   </div>
 </div>
 
 <script>
-/* Mobile-friendly shell game
- - Adds touchstart listeners for immediate response
- - Larger hit areas and responsive transforms
-*/
+/* Compact shell game — glasses near each other and Start resets then starts */
 (() => {
   const positionsEl = document.getElementById('positions');
   const startBtn = document.getElementById('startBtn');
@@ -138,17 +133,16 @@
   const modeText = document.getElementById('mode');
   const confettiRoot = document.getElementById('confetti');
 
-  let slots = [];          // slot DOMs by original index (0..2)
-  let order = [0,1,2];     // visual order mapping to original indices
-  let hiddenIndex = 0;     // original index holding the bowl
+  let slots = [];
+  let order = [0,1,2];
+  let hiddenIndex = 0;
   let animating = false;
   let swapInterval = null;
   let shuffleTimeout = null;
 
-  // settings
-  const revealLength = 1000;      // ms
-  const shuffleDuration = 5200;   // ms total
-  const swapEvery = 600;          // ms between swaps
+  const revealLength = 1000;
+  const shuffleDuration = 5200;
+  const swapEvery = 600;
 
   function randRGB(){
     const r = 80 + Math.floor(Math.random()*176);
@@ -156,11 +150,7 @@
     const b = 60 + Math.floor(Math.random()*196);
     return `rgb(${r},${g},${b})`;
   }
-  function makeBowlGradient(){
-    const a = randRGB();
-    const b = randRGB();
-    return `radial-gradient(circle at 30% 30%, ${a}, ${b})`;
-  }
+  function makeBowlGradient(){ const a = randRGB(); const b = randRGB(); return `radial-gradient(circle at 30% 30%, ${a}, ${b})`; }
 
   function buildSlots(){
     positionsEl.innerHTML = '';
@@ -172,7 +162,6 @@
       s.setAttribute('role','button');
       s.setAttribute('tabindex','0');
       s.setAttribute('aria-label', `Glass ${i+1}`);
-      // inner includes a full-size hit element for touch
       s.innerHTML = `
         <div class="hit" aria-hidden="true"></div>
         <div class="glass" data-glass="${i}">
@@ -182,37 +171,36 @@
       `;
       positionsEl.appendChild(s);
       slots.push(s);
-
-      // add both click and touchstart for immediacy
       s.addEventListener('click', onGuess, {passive:true});
       s.addEventListener('touchstart', onGuess, {passive:true});
-      s.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); }
-      });
+      s.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onGuess({currentTarget: s}); }});
     }
     order = [0,1,2];
     placeSlotsInstant();
   }
 
+  function getSlotGapPx(){
+    const gap = getComputedStyle(document.documentElement).getPropertyValue('--slot-gap') || '12px';
+    return parseFloat(gap);
+  }
+
+  // place slots centered and close to each other (offset uses slot width + gap)
   function placeSlotsInstant(){
     const rect = positionsEl.getBoundingClientRect();
     const total = rect.width;
     const slotRect = slots[0].getBoundingClientRect();
-    // fallback in case bounding box is zero (early load)
     const slotW = slotRect.width || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glass-w')) || 120;
-    const step = (total - slotW) / 2;
-    const xs = [-step, 0, step];
+    const gap = getSlotGapPx() || 12;
+    const offset = slotW + gap; // distance between centers
+    const xs = [-offset, 0, offset];
     slots.forEach((s, origIdx) => {
       const pos = order.indexOf(origIdx);
       const x = xs[pos] || 0;
       s.style.transition = 'none';
       s.style.transform = `translateX(${x}px)`;
       s.style.zIndex = 10 + pos;
-      const g = s.querySelector('.glass');
-      g.classList.remove('correct','wrong');
-      // reset bowl
-      const b = s.querySelector('.bowl');
-      if(b){ b.classList.remove('show'); b.style.opacity = 0; }
+      const g = s.querySelector('.glass'); g.classList.remove('correct','wrong');
+      const b = s.querySelector('.bowl'); if(b){ b.classList.remove('show'); b.style.opacity = 0; }
     });
     void positionsEl.offsetHeight;
     slots.forEach(s => s.style.transition = 'transform 700ms cubic-bezier(.2,.9,.3,1)');
@@ -224,11 +212,11 @@
     order[iPos] = idxB;
     order[jPos] = idxA;
     const rect = positionsEl.getBoundingClientRect();
-    const total = rect.width;
     const slotRect = slots[0].getBoundingClientRect();
     const slotW = slotRect.width || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glass-w')) || 120;
-    const step = (total - slotW) / 2;
-    const xs = [-step, 0, step];
+    const gap = getSlotGapPx() || 12;
+    const offset = slotW + gap;
+    const xs = [-offset, 0, offset];
     slots.forEach((s, origIdx) => {
       const pos = order.indexOf(origIdx);
       const x = xs[pos] || 0;
@@ -252,7 +240,6 @@
   function colorizeRound(){
     for(let i=0;i<3;i++){
       const g = slots[i].querySelector('.glass');
-      // produce a light translucent background from an rgb
       const rgb = randRGB();
       const rgba = rgb.replace('rgb','rgba').replace(')',',0.12)');
       g.style.background = `linear-gradient(180deg, ${rgba}, rgba(255,255,255,0.02))`;
@@ -262,18 +249,27 @@
     }
   }
 
+  // RESET function (called before starting)
+  function resetGame(){
+    if(swapInterval){ clearInterval(swapInterval); swapInterval = null; }
+    if(shuffleTimeout){ clearTimeout(shuffleTimeout); shuffleTimeout = null; }
+    animating = false;
+    modeText.textContent = 'Ready';
+    statusText.textContent = 'Reset. Press Start to play.';
+    clearConfetti();
+    buildSlots();
+    placeSlotsInstant();
+  }
+
   function startShuffle(){
     if(animating) return;
     animating = true;
     modeText.textContent = 'Preparing';
     statusText.textContent = 'Showing bowl briefly...';
-    // slightly random visual order first
-    order = shuffleArray([0,1,2]);
+    order = shuffleArray([0,1,2]); // small visual variation
     placeSlotsInstant();
-
     hiddenIndex = Math.floor(Math.random() * 3);
     colorizeRound();
-
     showBowlTemporarily(() => {
       modeText.textContent = 'Shuffling';
       statusText.textContent = 'Shuffling... watch carefully!';
@@ -299,16 +295,13 @@
   }
 
   function onGuess(e){
-    // defensive: some events will be touchstart and have touches — ignore those objects, we only need target
     const targetSlot = e.currentTarget;
     if(!targetSlot) return;
     if(animating) return;
-    // prevent multiple fast taps
     animating = true;
     const clickedOriginal = Number(targetSlot.dataset.index);
     const correct = (clickedOriginal === hiddenIndex);
 
-    // show bowl under true original after a short delay so reveal feels natural
     setTimeout(()=> {
       const trueBowl = slots[hiddenIndex].querySelector('.bowl');
       trueBowl.style.background = makeBowlGradient();
@@ -339,6 +332,15 @@
     }
   }
 
+  // Start button: reset first, then begin (immediate)
+  startBtn.addEventListener('click', () => {
+    // reset first
+    resetGame();
+    // ensure layout updates then start
+    requestAnimationFrame(() => { startShuffle(); });
+  }, {passive:true});
+  startBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startBtn.click(); }, {passive:false});
+
   revealBtn.addEventListener('click', ()=> {
     if(animating) return;
     slots[hiddenIndex].querySelector('.bowl').classList.add('show');
@@ -348,29 +350,10 @@
   }, {passive:true});
   revealBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); revealBtn.click(); }, {passive:false});
 
-  resetBtn.addEventListener('click', ()=> {
-    if(swapInterval){ clearInterval(swapInterval); swapInterval = null; }
-    if(shuffleTimeout){ clearTimeout(shuffleTimeout); shuffleTimeout = null; }
-    animating = false;
-    modeText.textContent = 'Ready';
-    statusText.textContent = 'Reset. Press Start to play.';
-    clearConfetti();
-    buildSlots();
-    placeSlotsInstant();
-  }, {passive:true});
+  resetBtn.addEventListener('click', resetGame, {passive:true});
   resetBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); resetBtn.click(); }, {passive:false});
 
-  startBtn.addEventListener('click', startShuffle, {passive:true});
-  startBtn.addEventListener('touchstart', (e)=> { e.preventDefault(); startBtn.click(); }, {passive:false});
-
-  function shuffleArray(a){
-    const arr = a.slice();
-    for(let i=arr.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [arr[i],arr[j]] = [arr[j],arr[i]];
-    }
-    return arr;
-  }
+  function shuffleArray(a){ const arr = a.slice(); for(let i=arr.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; }
 
   function spawnConfettiAt(targetGlass){
     const rootRect = confettiRoot.getBoundingClientRect();
@@ -384,13 +367,13 @@
       const h = 10 + Math.random()*18;
       el.style.width = w + 'px';
       el.style.height = h + 'px';
-      el.style.left = (centerX + (Math.random()*120 - 60)) + 'px';
+      el.style.left = (centerX + (Math.random()*100 - 50)) + 'px';
       el.style.top = (tRect.top - rootRect.top) + 'px';
       el.style.background = colors[Math.floor(Math.random()*colors.length)];
       el.style.transform = `rotate(${Math.random()*360}deg)`;
       confettiRoot.appendChild(el);
       const destX = (Math.random()*300 - 150);
-      const destY = rootRect.height + 80 + Math.random()*180;
+      const destY = rootRect.height + 80 + Math.random()*140;
       const rot = Math.random()*720 - 360;
       el.animate([
         { transform: `translateY(0px) rotate(${Math.random()*360}deg)`, opacity:1 },
@@ -401,23 +384,11 @@
   }
   function clearConfetti(){ confettiRoot.innerHTML = ''; }
 
-  // layout responsiveness: recompute transforms
+  // responsive layout recompute
   let resizeTimer = null;
-  window.addEventListener('resize', ()=> {
-    if(resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(()=> { placeSlotsInstant(); }, 160);
-  });
+  window.addEventListener('resize', ()=> { if(resizeTimer) clearTimeout(resizeTimer); resizeTimer = setTimeout(()=> { placeSlotsInstant(); }, 160); });
 
-  window.addEventListener('load', ()=> {
-    buildSlots();
-    // entrance micro animation
-    setTimeout(()=> {
-      slots.forEach((s, i) => {
-        s.style.transform += ' translateY(8px)';
-        setTimeout(()=> { s.style.transform = s.style.transform.replace(' translateY(8px)',''); }, 180 + i*80);
-      });
-    }, 160);
-  });
+  window.addEventListener('load', ()=> { buildSlots(); setTimeout(()=> { slots.forEach((s,i)=>{ s.style.transform += ' translateY(8px)'; setTimeout(()=> s.style.transform = s.style.transform.replace(' translateY(8px)',''), 160 + i*80); }); }, 160); });
 })();
 </script>
 </body>
